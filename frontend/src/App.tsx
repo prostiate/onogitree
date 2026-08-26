@@ -17,7 +17,7 @@ import { repoStore } from "./store/repoStore";
 import { RepoStatus } from "./types/git";
 
 const DEFAULT_SIDEBAR_WIDTH = 380;
-const DEFAULT_CHANGES_VIEW_HEIGHT = 260;
+const DEFAULT_CHANGES_VIEW_HEIGHT = 280;
 
 export const App: Component = () => {
   const [isLoadingApp, setIsLoadingApp] = createSignal<boolean>(true);
@@ -28,6 +28,12 @@ export const App: Component = () => {
   const [isSettingsOpen, setIsSettingsOpen] = createSignal<boolean>(false);
   const [branchPickerRepo, setBranchPickerRepo] =
     createSignal<RepoStatus | null>(null);
+
+  // Sidebar visibility & Accordion state (enforcing min 1 expanded)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] =
+    createSignal<boolean>(false);
+  const [isReposExpanded, setIsReposExpanded] = createSignal<boolean>(true);
+  const [isChangesExpanded, setIsChangesExpanded] = createSignal<boolean>(true);
 
   // Resizers
   const [sidebarWidth, setSidebarWidth] = createSignal<number>(
@@ -41,6 +47,32 @@ export const App: Component = () => {
   const [isDraggingVertical, setIsDraggingVertical] =
     createSignal<boolean>(false);
 
+  const toggleReposAccordion = () => {
+    if (isReposExpanded()) {
+      if (!isChangesExpanded()) {
+        setIsChangesExpanded(true);
+      }
+      setIsReposExpanded(false);
+    } else {
+      setIsReposExpanded(true);
+    }
+  };
+
+  const toggleChangesAccordion = () => {
+    if (isChangesExpanded()) {
+      if (!isReposExpanded()) {
+        setIsReposExpanded(true);
+      }
+      setIsChangesExpanded(false);
+    } else {
+      setIsChangesExpanded(true);
+    }
+  };
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed());
+  };
+
   onMount(async () => {
     try {
       setLoadingStatus("Discovering configured repositories...");
@@ -49,7 +81,7 @@ export const App: Component = () => {
     } catch (err) {
       console.error("Initialization error:", err);
     } finally {
-      // Intentional smooth minimum 600ms display to eliminate fast-system white/layout flicker
+      // Smooth minimum display to eliminate initial layout flicker
       setTimeout(() => {
         setIsLoadingApp(false);
       }, 650);
@@ -68,9 +100,13 @@ export const App: Component = () => {
       }
     }, 4000);
 
-    // Global keyboard shortcut: Ctrl+O to open repo
+    // Global keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") {
+      const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+      if (isCmdOrCtrl && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        toggleSidebar();
+      } else if (isCmdOrCtrl && e.key.toLowerCase() === "o") {
         e.preventDefault();
         setIsOpenRepoOpen(true);
       }
@@ -121,49 +157,80 @@ export const App: Component = () => {
       <TopToolbar
         onOpenRepoClick={() => setIsOpenRepoOpen(true)}
         onSettingsClick={() => setIsSettingsOpen(true)}
+        isSidebarCollapsed={isSidebarCollapsed()}
+        onToggleSidebar={toggleSidebar}
       />
 
       {/* Main Split Layout */}
       <div class="flex flex-1 overflow-hidden">
-        {/* Left Sidebar */}
-        <div
-          style={{ width: `${sidebarWidth()}px` }}
-          class="flex flex-col border-r border-carbon-border bg-carbon-base flex-shrink-0 select-none overflow-hidden"
-        >
-          {/* Top Half: Repositories List */}
-          <div class="flex-1 overflow-hidden min-h-[120px]">
-            <RepoTree
-              onOpenRepoModal={() => setIsOpenRepoOpen(true)}
-              onBranchPickerOpen={(repo) => setBranchPickerRepo(repo)}
-            />
-          </div>
-
-          {/* Vertical Resizer Divider */}
+        {/* Left Collapsible Sidebar */}
+        <Show when={!isSidebarCollapsed()}>
           <div
-            onMouseDown={() => setIsDraggingVertical(true)}
-            onDblClick={() => setChangesViewHeight(DEFAULT_CHANGES_VIEW_HEIGHT)}
-            class="h-1 hover:h-1.5 bg-carbon-border hover:bg-git-indigo cursor-row-resize transition-all z-10 flex-shrink-0 flex items-center justify-center group"
-            title="Drag to resize Source Control view (Double-click to reset)"
+            style={{ width: `${sidebarWidth()}px` }}
+            class="flex flex-col border-r border-carbon-border bg-carbon-base flex-shrink-0 select-none overflow-hidden transition-all"
           >
-            <div class="w-8 h-0.5 bg-gray-600 group-hover:bg-git-indigo rounded-full opacity-60" />
+            {/* Repositories Accordion Section */}
+            <div
+              class={`overflow-hidden transition-all ${
+                isReposExpanded()
+                  ? isChangesExpanded()
+                    ? "flex-1 min-h-[120px]"
+                    : "flex-1"
+                  : "flex-shrink-0"
+              }`}
+            >
+              <RepoTree
+                onOpenRepoModal={() => setIsOpenRepoOpen(true)}
+                onBranchPickerOpen={(repo) => setBranchPickerRepo(repo)}
+                isExpanded={isReposExpanded()}
+                onToggleExpand={toggleReposAccordion}
+              />
+            </div>
+
+            {/* Vertical Resizer Divider (Only active when both accordions are open) */}
+            <Show when={isReposExpanded() && isChangesExpanded()}>
+              <div
+                onMouseDown={() => setIsDraggingVertical(true)}
+                onDblClick={() =>
+                  setChangesViewHeight(DEFAULT_CHANGES_VIEW_HEIGHT)
+                }
+                class="h-1 hover:h-1.5 bg-carbon-border hover:bg-git-indigo cursor-row-resize transition-all z-10 flex-shrink-0 flex items-center justify-center group"
+                title="Drag to resize Source Control view (Double-click to reset)"
+              >
+                <div class="w-8 h-0.5 bg-gray-600 group-hover:bg-git-indigo rounded-full opacity-60" />
+              </div>
+            </Show>
+
+            {/* Source Control Changes Accordion Section */}
+            <div
+              style={
+                isReposExpanded() && isChangesExpanded()
+                  ? { height: `${changesViewHeight()}px` }
+                  : undefined
+              }
+              class={`overflow-hidden transition-all ${
+                isChangesExpanded()
+                  ? isReposExpanded()
+                    ? "flex-shrink-0"
+                    : "flex-1"
+                  : "flex-shrink-0"
+              }`}
+            >
+              <ChangesView
+                isExpanded={isChangesExpanded()}
+                onToggleAccordion={toggleChangesAccordion}
+              />
+            </div>
           </div>
 
-          {/* Bottom Half: Changes View */}
+          {/* Horizontal Resizer Divider */}
           <div
-            style={{ height: `${changesViewHeight()}px` }}
-            class="flex-shrink-0 overflow-hidden"
-          >
-            <ChangesView />
-          </div>
-        </div>
-
-        {/* Horizontal Resizer Divider */}
-        <div
-          onMouseDown={() => setIsDraggingSidebar(true)}
-          onDblClick={() => setSidebarWidth(DEFAULT_SIDEBAR_WIDTH)}
-          class="w-1 hover:w-1.5 bg-carbon-border hover:bg-git-indigo cursor-col-resize transition-all z-10 flex-shrink-0"
-          title="Drag to resize sidebar width (Double-click to reset)"
-        />
+            onMouseDown={() => setIsDraggingSidebar(true)}
+            onDblClick={() => setSidebarWidth(DEFAULT_SIDEBAR_WIDTH)}
+            class="w-1 hover:w-1.5 bg-carbon-border hover:bg-git-indigo cursor-col-resize transition-all z-10 flex-shrink-0"
+            title="Drag to resize sidebar width (Double-click to reset)"
+          />
+        </Show>
 
         {/* Right Workspace Main Panel */}
         <main class="flex-1 bg-carbon-base flex flex-col overflow-hidden relative">

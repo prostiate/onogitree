@@ -9,6 +9,8 @@ import {
   GitBranch,
   FolderGit2,
   FileCode2,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-solid";
 import { repoStore } from "../../../store/repoStore";
 import { RepoStatus } from "../../../types/git";
@@ -27,11 +29,15 @@ interface ChangesHeaderProps {
   onTabChange: (tab: "workingTree" | "commit") => void;
   activeCommitHash?: string | null;
   totalWorkingChanges: number;
+  isExpanded?: boolean;
+  onToggleAccordion?: () => void;
 }
 
 export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
   const [showOptionsMenu, setShowOptionsMenu] = createSignal<boolean>(false);
   let optionsMenuRef: HTMLDivElement | undefined;
+
+  const isExpanded = () => props.isExpanded ?? true;
 
   const handleOutsideClick = (e: MouseEvent) => {
     if (
@@ -54,16 +60,34 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
   return (
     <div class="bg-carbon-elevated border-b border-carbon-border select-none">
       {/* Top Bar: Title & Action Controls */}
-      <div class="px-3.5 py-2.5 flex items-center justify-between border-b border-carbon-border/50">
-        <div class="flex items-center gap-2">
-          <FolderGit2 class="w-4 h-4 text-indigo-400" />
-          <span class="font-bold text-gray-200 tracking-wider text-xs uppercase">
+      <div
+        onClick={props.onToggleAccordion}
+        class="px-3.5 py-2.5 flex items-center justify-between border-b border-carbon-border/50 cursor-pointer hover:bg-carbon-surface/80 transition-colors"
+      >
+        <div class="flex items-center gap-2 min-w-0">
+          <Show
+            when={isExpanded()}
+            fallback={<ChevronRight class="w-3.5 h-3.5 text-gray-400" />}
+          >
+            <ChevronDown class="w-3.5 h-3.5 text-indigo-400" />
+          </Show>
+          <FolderGit2 class="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+          <span class="font-bold text-gray-200 tracking-wider text-xs uppercase truncate">
             Source Control
           </span>
+
+          <Show when={props.totalWorkingChanges > 0}>
+            <span class="px-1.5 py-0.2 bg-amber-500/15 border border-amber-500/30 text-amber-400 font-mono text-[10px] font-bold rounded-full">
+              {props.totalWorkingChanges}
+            </span>
+          </Show>
         </div>
 
-        <Show when={props.repo}>
-          <div class="flex items-center gap-1.5">
+        <Show when={isExpanded() && props.repo}>
+          <div
+            class="flex items-center gap-1.5"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Toggle Tree / List View */}
             <button
               onClick={() =>
@@ -229,49 +253,51 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
         </Show>
       </div>
 
-      {/* Middle Row: Active Repository Hero Banner */}
-      <Show when={props.repo}>
-        {(repo) => (
-          <div class="px-3.5 py-2 flex items-center justify-between gap-2 bg-carbon-base/40">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="font-bold text-gray-100 text-xs truncate">
-                {repo().name}
-              </span>
-              <Show when={repo().isDirty}>
-                <span
-                  class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0"
-                  title="Uncommitted changes"
-                />
-              </Show>
-            </div>
-
-            <div class="flex items-center gap-1.5 flex-shrink-0">
-              {/* Branch Pill styled like Repository List */}
-              <div class="flex items-center gap-1 px-2 py-0.5 bg-indigo-500/15 border border-indigo-500/40 rounded-full text-indigo-300 font-mono text-[10.5px] font-bold">
-                <GitBranch class="w-3 h-3 text-indigo-400" />
-                <span class="truncate max-w-[120px]">
-                  {repo().currentBranch}
+      {/* Middle Row: Active Repository Hero Banner (when expanded) */}
+      <Show when={isExpanded()}>
+        <Show when={props.repo}>
+          {(repo) => (
+            <div class="px-3.5 py-2 flex items-center justify-between gap-2 bg-carbon-base/40">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="font-bold text-gray-100 text-xs truncate">
+                  {repo().name}
                 </span>
+                <Show when={repo().isDirty}>
+                  <span
+                    class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0"
+                    title="Uncommitted changes"
+                  />
+                </Show>
               </div>
 
-              {/* Ahead / Behind status */}
-              <Show when={repo().aheadCount > 0 || repo().behindCount > 0}>
-                <div class="flex items-center gap-1 font-mono text-[10px] font-bold px-1.5 py-0.5 bg-carbon-surface border border-carbon-border rounded">
-                  <Show when={repo().aheadCount > 0}>
-                    <span class="text-emerald-400">+{repo().aheadCount}↑</span>
-                  </Show>
-                  <Show when={repo().behindCount > 0}>
-                    <span class="text-amber-400">~{repo().behindCount}↓</span>
-                  </Show>
+              <div class="flex items-center gap-1.5 flex-shrink-0">
+                {/* Branch Pill styled like Repository List */}
+                <div class="flex items-center gap-1 px-2 py-0.5 bg-indigo-500/15 border border-indigo-500/40 rounded-full text-indigo-300 font-mono text-[10.5px] font-bold">
+                  <GitBranch class="w-3 h-3 text-indigo-400" />
+                  <span class="truncate max-w-[120px]">
+                    {repo().currentBranch}
+                  </span>
                 </div>
-              </Show>
+
+                {/* Ahead / Behind status */}
+                <Show when={repo().aheadCount > 0 || repo().behindCount > 0}>
+                  <div class="flex items-center gap-1 font-mono text-[10px] font-bold px-1.5 py-0.5 bg-carbon-surface border border-carbon-border rounded">
+                    <Show when={repo().aheadCount > 0}>
+                      <span class="text-emerald-400">+{repo().aheadCount}↑</span>
+                    </Show>
+                    <Show when={repo().behindCount > 0}>
+                      <span class="text-amber-400">~{repo().behindCount}↓</span>
+                    </Show>
+                  </div>
+                </Show>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </Show>
       </Show>
 
       {/* Bottom Row: Context Switcher Tabs (Working Tree vs Active Commit) */}
-      <Show when={props.activeCommitHash}>
+      <Show when={isExpanded() && props.activeCommitHash}>
         <div class="px-3.5 py-1.5 bg-carbon-surface border-t border-carbon-border/60 flex items-center gap-1.5">
           <button
             onClick={() => props.onTabChange("workingTree")}

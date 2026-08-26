@@ -1,5 +1,11 @@
 import { Component, For, Show } from "solid-js";
-import { FolderGit2, Plus, RefreshCw } from "lucide-solid";
+import {
+  FolderGit2,
+  Plus,
+  RefreshCw,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-solid";
 import { RepoStatus } from "../../types/git";
 import { repoStore } from "../../store/repoStore";
 import { RepoRow } from "./RepoRow";
@@ -7,34 +13,48 @@ import { RepoRow } from "./RepoRow";
 interface RepoTreeProps {
   onOpenRepoModal: () => void;
   onBranchPickerOpen: (repo: RepoStatus) => void;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 export const RepoTree: Component<RepoTreeProps> = (props) => {
   const repos = () => repoStore.filteredRepositories();
+  const isExpanded = () => props.isExpanded ?? true;
 
   return (
-    <div class="flex flex-col h-full bg-carbon-base select-none">
-      {/* Header */}
-      <div class="px-3 py-2 bg-carbon-surface border-b border-carbon-border flex items-center justify-between text-xs">
-        <span class="font-semibold text-gray-300 tracking-wider text-[11px] uppercase flex items-center gap-1.5">
-          <FolderGit2 class="w-3.5 h-3.5 text-git-indigo" />
-          <span>Repositories ({repos().length})</span>
-        </span>
+    <div class="flex flex-col h-full bg-carbon-base select-none overflow-hidden">
+      {/* Accordion Header */}
+      <div
+        onClick={props.onToggleExpand}
+        class="px-3.5 py-2.5 bg-carbon-surface hover:bg-carbon-elevated/80 border-b border-carbon-border flex items-center justify-between text-xs cursor-pointer select-none transition-colors"
+      >
+        <div class="flex items-center gap-2 min-w-0">
+          <Show
+            when={isExpanded()}
+            fallback={<ChevronRight class="w-3.5 h-3.5 text-gray-400" />}
+          >
+            <ChevronDown class="w-3.5 h-3.5 text-indigo-400" />
+          </Show>
+          <FolderGit2 class="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+          <span class="font-bold text-gray-200 tracking-wider text-xs uppercase truncate">
+            Repositories ({repos().length})
+          </span>
+        </div>
 
-        <div class="flex items-center gap-1">
+        <div class="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => repoStore.refreshAll()}
-            class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 transition-colors"
+            class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
             title="Refresh All Repositories"
           >
             <RefreshCw
-              class={`w-3 h-3 ${repoStore.isLoading() ? "animate-spin" : ""}`}
+              class={`w-3.5 h-3.5 ${repoStore.isLoading() ? "animate-spin" : ""}`}
             />
           </button>
 
           <button
             onClick={props.onOpenRepoModal}
-            class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 transition-colors"
+            class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
             title="Add Repository"
           >
             <Plus class="w-3.5 h-3.5" />
@@ -42,35 +62,37 @@ export const RepoTree: Component<RepoTreeProps> = (props) => {
         </div>
       </div>
 
-      {/* List Container */}
-      <div class="flex-1 overflow-y-auto overflow-x-hidden">
-        <Show
-          when={repos().length > 0}
-          fallback={
-            <div class="p-6 text-center text-xs text-gray-500 flex flex-col items-center gap-3">
-              <FolderGit2 class="w-8 h-8 text-gray-600 opacity-40" />
-              <p>No repositories in workspace.</p>
-              <button
-                onClick={props.onOpenRepoModal}
-                class="px-3 py-1.5 bg-carbon-elevated hover:bg-carbon-hover border border-carbon-border rounded text-git-indigo font-medium cursor-pointer"
-              >
-                + Add or Scan Repositories
-              </button>
-            </div>
-          }
-        >
-          <For each={repos()}>
-            {(repo) => (
-              <RepoRow
-                repo={repo}
-                isSelected={repoStore.selectedRepoId() === repo.id}
-                onSelect={() => repoStore.selectRepo(repo.id)}
-                onBranchClick={() => props.onBranchPickerOpen(repo)}
-              />
-            )}
-          </For>
-        </Show>
-      </div>
+      {/* Repositories List Container */}
+      <Show when={isExpanded()}>
+        <div class="flex-1 overflow-y-auto overflow-x-hidden">
+          <Show
+            when={repos().length > 0}
+            fallback={
+              <div class="p-6 text-center text-xs text-gray-500 flex flex-col items-center gap-3">
+                <FolderGit2 class="w-8 h-8 text-gray-600 opacity-40" />
+                <p>No repositories in workspace.</p>
+                <button
+                  onClick={props.onOpenRepoModal}
+                  class="px-3 py-1.5 bg-carbon-elevated hover:bg-carbon-hover border border-carbon-border rounded text-git-indigo font-medium cursor-pointer"
+                >
+                  + Add or Scan Repositories
+                </button>
+              </div>
+            }
+          >
+            <For each={repos()}>
+              {(repo) => (
+                <RepoRow
+                  repo={repo}
+                  isSelected={repoStore.selectedRepoId() === repo.id}
+                  onSelect={() => repoStore.selectRepo(repo.id)}
+                  onBranchClick={() => props.onBranchPickerOpen(repo)}
+                />
+              )}
+            </For>
+          </Show>
+        </div>
+      </Show>
     </div>
   );
 };

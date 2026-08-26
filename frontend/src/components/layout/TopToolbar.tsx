@@ -8,6 +8,7 @@ import {
   Zap,
   Settings,
   Loader2,
+  PanelLeft,
 } from "lucide-solid";
 import { repoStore } from "../../store/repoStore";
 import { batchStore } from "../../store/batchStore";
@@ -15,16 +16,36 @@ import { batchStore } from "../../store/batchStore";
 interface TopToolbarProps {
   onOpenRepoClick: () => void;
   onSettingsClick: () => void;
+  isSidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
 export const TopToolbar: Component<TopToolbarProps> = (props) => {
   return (
     <header class="h-10 bg-carbon-surface border-b border-carbon-border px-3 flex items-center justify-between select-none text-xs">
-      {/* Left controls: Open Repo & Search */}
+      {/* Left controls: Sidebar Toggle, Open Repo & Search */}
       <div class="flex items-center gap-2">
+        <Show when={props.onToggleSidebar}>
+          <button
+            onClick={props.onToggleSidebar}
+            class={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+              props.isSidebarCollapsed
+                ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30"
+                : "bg-carbon-elevated hover:bg-carbon-hover border-carbon-border text-gray-300 hover:text-white"
+            }`}
+            title={
+              props.isSidebarCollapsed
+                ? "Expand Sidebar (Ctrl+B)"
+                : "Collapse Sidebar (Ctrl+B)"
+            }
+          >
+            <PanelLeft class="w-3.5 h-3.5" />
+          </button>
+        </Show>
+
         <button
           onClick={props.onOpenRepoClick}
-          class="flex items-center gap-1.5 px-2.5 py-1 bg-carbon-elevated hover:bg-carbon-hover border border-carbon-border rounded text-gray-200 font-medium transition-colors cursor-pointer"
+          class="flex items-center gap-1.5 px-2.5 py-1 bg-carbon-elevated hover:bg-carbon-hover border border-carbon-border rounded-lg text-gray-200 font-medium transition-colors cursor-pointer"
           title="Open or Scan Git Repositories (Ctrl+O)"
         >
           <FolderPlus class="w-3.5 h-3.5 text-git-indigo" />
@@ -38,7 +59,7 @@ export const TopToolbar: Component<TopToolbarProps> = (props) => {
             placeholder="Search repos, branches (Ctrl+K)..."
             value={repoStore.searchQuery()}
             onInput={(e) => repoStore.setSearchQuery(e.currentTarget.value)}
-            class="w-56 pl-7 pr-2 py-1 bg-carbon-base border border-carbon-border rounded text-gray-200 placeholder-gray-500 focus:outline-none focus:border-git-indigo transition-colors"
+            class="w-56 pl-7 pr-2 py-1 bg-carbon-base border border-carbon-border rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-git-indigo transition-colors"
           />
         </div>
       </div>
@@ -63,7 +84,7 @@ export const TopToolbar: Component<TopToolbarProps> = (props) => {
           disabled={
             batchStore.isBatchRunning() || repoStore.repositories().length === 0
           }
-          class="flex items-center gap-1 px-2 py-1 bg-carbon-elevated hover:bg-carbon-hover disabled:opacity-40 disabled:cursor-not-allowed border border-carbon-border rounded text-gray-200 transition-colors cursor-pointer"
+          class="flex items-center gap-1 px-2 py-1 bg-carbon-elevated hover:bg-carbon-hover disabled:opacity-40 disabled:cursor-not-allowed border border-carbon-border rounded-lg text-gray-200 transition-colors cursor-pointer"
           title="Pull all repositories (with safeguards)"
         >
           <ArrowDownToLine class="w-3.5 h-3.5 text-git-emerald" />
@@ -75,7 +96,7 @@ export const TopToolbar: Component<TopToolbarProps> = (props) => {
           disabled={
             batchStore.isBatchRunning() || repoStore.repositories().length === 0
           }
-          class="flex items-center gap-1 px-2 py-1 bg-carbon-elevated hover:bg-carbon-hover disabled:opacity-40 disabled:cursor-not-allowed border border-carbon-border rounded text-gray-200 transition-colors cursor-pointer"
+          class="flex items-center gap-1 px-2 py-1 bg-carbon-elevated hover:bg-carbon-hover disabled:opacity-40 disabled:cursor-not-allowed border border-carbon-border rounded-lg text-gray-200 transition-colors cursor-pointer"
           title="Fetch all remotes and prune references"
         >
           <RefreshCw
@@ -89,7 +110,7 @@ export const TopToolbar: Component<TopToolbarProps> = (props) => {
           disabled={
             batchStore.isBatchRunning() || repoStore.repositories().length === 0
           }
-          class="flex items-center gap-1 px-2 py-1 bg-carbon-elevated hover:bg-carbon-hover disabled:opacity-40 disabled:cursor-not-allowed border border-carbon-border rounded text-gray-200 transition-colors cursor-pointer"
+          class="flex items-center gap-1 px-2 py-1 bg-carbon-elevated hover:bg-carbon-hover disabled:opacity-40 disabled:cursor-not-allowed border border-carbon-border rounded-lg text-gray-200 transition-colors cursor-pointer"
           title="Review and push repositories with unpushed commits"
         >
           <ArrowUpFromLine class="w-3.5 h-3.5 text-git-indigo" />
@@ -99,7 +120,7 @@ export const TopToolbar: Component<TopToolbarProps> = (props) => {
         <button
           onClick={() => repoStore.refreshAll()}
           disabled={repoStore.isLoading()}
-          class="p-1 hover:bg-carbon-hover border border-carbon-border rounded text-gray-300 transition-colors cursor-pointer"
+          class="p-1.5 hover:bg-carbon-hover border border-carbon-border rounded-lg text-gray-300 transition-colors cursor-pointer"
           title="Refresh working tree and branch status"
         >
           <Zap
@@ -109,7 +130,7 @@ export const TopToolbar: Component<TopToolbarProps> = (props) => {
 
         <button
           onClick={props.onSettingsClick}
-          class="p-1 hover:bg-carbon-hover border border-carbon-border rounded text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
+          class="p-1.5 hover:bg-carbon-hover border border-carbon-border rounded-lg text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
           title="Open Preferences & Settings"
         >
           <Settings class="w-3.5 h-3.5" />

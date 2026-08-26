@@ -1,17 +1,15 @@
 import { Component, createSignal, Show } from "solid-js";
 import {
-  GitBranch,
   Pin,
+  GitBranch,
+  Radio,
   RefreshCw,
+  X,
   AlertTriangle,
   Key,
-  X,
-  Radio,
-  Folder,
-  Copy,
-  ArrowDownToLine,
-  ArrowUpFromLine,
+  FolderOpen,
   Trash2,
+  Copy,
 } from "lucide-solid";
 import { RepoStatus } from "../../types/git";
 import { repoStore } from "../../store/repoStore";
@@ -26,11 +24,12 @@ interface RepoRowProps {
 }
 
 export const RepoRow: Component<RepoRowProps> = (props) => {
-  const batchEvent = () => batchStore.progressEvents()[props.repo.id];
   const [contextMenuPos, setContextMenuPos] = createSignal<{
     x: number;
     y: number;
   } | null>(null);
+
+  const batchEvent = () => batchStore.progressEvents()[props.repo.id];
 
   const handleContextMenu = (e: MouseEvent) => {
     e.preventDefault();
@@ -38,45 +37,26 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
     setContextMenuPos({ x: e.clientX, y: e.clientY });
   };
 
-  const menuItems: () => MenuItem[] = () => [
-    {
-      id: "branch",
-      label: `Switch Branch (${props.repo.currentBranch})...`,
-      icon: <GitBranch class="w-3.5 h-3.5 text-indigo-400" />,
-      onClick: () => props.onBranchClick(),
-    },
-    {
-      id: "refresh",
-      label: "Refresh Repository",
-      icon: <RefreshCw class="w-3.5 h-3.5 text-cyan-400" />,
-      onClick: () => repoStore.refreshRepo(props.repo.path),
-    },
-    {
-      id: "pull",
-      label: "Pull Changes",
-      icon: <ArrowDownToLine class="w-3.5 h-3.5 text-emerald-400" />,
-      onClick: () => batchStore.runPullAll(),
-    },
-    {
-      id: "push",
-      label: "Push Commits",
-      icon: <ArrowUpFromLine class="w-3.5 h-3.5 text-emerald-400" />,
-      onClick: () => batchStore.setIsPushModalOpen(true),
-    },
-    { id: "div-1", label: "", divider: true },
+  const menuItems = (): MenuItem[] => [
     {
       id: "open-folder",
       label: "Open in File Manager",
-      icon: <Folder class="w-3.5 h-3.5 text-amber-400" />,
+      icon: <FolderOpen class="w-3.5 h-3.5 text-amber-400" />,
       onClick: () => repoStore.openPath(props.repo.path),
     },
     {
       id: "copy-path",
-      label: "Copy Repository Path",
+      label: "Copy Path",
       icon: <Copy class="w-3.5 h-3.5 text-gray-400" />,
       onClick: () => navigator.clipboard.writeText(props.repo.path),
     },
-    { id: "div-2", label: "", divider: true },
+    { id: "div-1", label: "", divider: true },
+    {
+      id: "refresh",
+      label: "Refresh Status",
+      icon: <RefreshCw class="w-3.5 h-3.5 text-indigo-400" />,
+      onClick: () => repoStore.refreshRepo(props.repo.path),
+    },
     {
       id: "pin",
       label: props.repo.isPinned ? "Unpin Repository" : "Pin Repository to Top",
@@ -106,9 +86,9 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
       <div
         onClick={props.onSelect}
         onContextMenu={handleContextMenu}
-        class={`group px-3 py-2 border-b border-carbon-border/70 cursor-pointer select-none transition-all flex flex-col gap-1 text-xs ${
+        class={`group px-3 py-2.5 border-b border-carbon-border/70 cursor-pointer select-none transition-all flex flex-col gap-1.5 text-xs ${
           props.isSelected
-            ? "bg-carbon-elevated border-l-2 border-l-indigo-400 shadow-sm"
+            ? "bg-[#161B2B] border-l-2 border-l-indigo-400 shadow-sm"
             : "hover:bg-[#151924] bg-carbon-base"
         }`}
       >
@@ -150,7 +130,7 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
             </Show>
           </div>
 
-          {/* Right side of Line 1: Ahead/Behind / Conflict / Hover Action Buttons */}
+          {/* Right side of Line 1: Conflict / Auth Badges / Hover Action Buttons */}
           <div class="flex items-center gap-1.5 flex-shrink-0">
             {/* Real-time batch progress state */}
             <Show when={batchEvent()}>
@@ -161,30 +141,6 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
                   </span>
                 </Show>
               )}
-            </Show>
-
-            {/* Ahead / Behind Counters */}
-            <Show
-              when={props.repo.aheadCount > 0 || props.repo.behindCount > 0}
-            >
-              <div class="flex items-center gap-1 font-mono text-[10.5px] font-bold tabular-nums px-1.5 py-0.2 bg-carbon-surface border border-carbon-border/80 rounded">
-                <Show when={props.repo.aheadCount > 0}>
-                  <span
-                    class="text-emerald-400"
-                    title={`${props.repo.aheadCount} unpushed commits`}
-                  >
-                    +{props.repo.aheadCount}↑
-                  </span>
-                </Show>
-                <Show when={props.repo.behindCount > 0}>
-                  <span
-                    class="text-amber-400"
-                    title={`${props.repo.behindCount} commits behind`}
-                  >
-                    ~{props.repo.behindCount}↓
-                  </span>
-                </Show>
-              </div>
             </Show>
 
             {/* Conflict Badge */}
@@ -215,7 +171,7 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
                   void repoStore.refreshRepo(props.repo.path);
                 }}
                 class="p-1 hover:bg-carbon-border rounded text-gray-400 hover:text-gray-200"
-                title="Refresh repository status and logs"
+                title="Refresh repository status"
               >
                 <RefreshCw
                   class={`w-3 h-3 ${
@@ -225,7 +181,6 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
                   }`}
                 />
               </button>
-
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -240,30 +195,52 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
           </div>
         </div>
 
-        {/* Line 2: Branch Badge (Left) + Last Fetch & AutoFetch (Right) */}
+        {/* Line 2: Branch Badge + Ahead/Behind Counters (Left) + Last Fetch & AutoFetch (Right) */}
         <div class="flex items-center justify-between gap-2 pl-5">
-          {/* Noticeable, High-Contrast Branch Pill */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              props.onBranchClick();
-            }}
-            class="flex items-center gap-1.5 px-2 py-0.5 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/35 rounded text-[11px] font-mono text-indigo-300 font-bold transition-all cursor-pointer shadow-sm hover:scale-[1.02] max-w-[190px]"
-            title="Click to switch branch"
-          >
-            <GitBranch class="w-3 h-3 text-indigo-400 flex-shrink-0 stroke-[2.5]" />
-            <span class="truncate">{props.repo.currentBranch}</span>
-          </button>
+          {/* Branch Pill & Repositioned Sync Indicators */}
+          <div class="flex items-center gap-1.5 min-w-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onBranchClick();
+              }}
+              class="flex items-center gap-1.5 px-2 py-0.5 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/35 rounded text-[11px] font-mono text-indigo-300 font-bold transition-all cursor-pointer shadow-xs truncate max-w-[155px]"
+              title="Click to switch branch"
+            >
+              <GitBranch class="w-3 h-3 text-indigo-400 flex-shrink-0 stroke-[2.5]" />
+              <span class="truncate">{props.repo.currentBranch}</span>
+            </button>
 
-          {/* Metadata & Status */}
-          <div class="flex items-center gap-2 text-[10px] font-mono text-gray-400">
+            {/* Repositioned Ahead Counter (+3↑) */}
+            <Show when={props.repo.aheadCount > 0}>
+              <span
+                class="px-1.5 py-0.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded font-mono text-[10px] font-bold tabular-nums flex-shrink-0 shadow-xs"
+                title={`${props.repo.aheadCount} unpushed commits`}
+              >
+                +{props.repo.aheadCount}↑
+              </span>
+            </Show>
+
+            {/* Repositioned Behind Counter (~1↓) */}
+            <Show when={props.repo.behindCount > 0}>
+              <span
+                class="px-1.5 py-0.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 rounded font-mono text-[10px] font-bold tabular-nums flex-shrink-0 shadow-xs"
+                title={`${props.repo.behindCount} commits behind`}
+              >
+                ~{props.repo.behindCount}↓
+              </span>
+            </Show>
+          </div>
+
+          {/* Metadata: Last Fetched & Auto-Fetch */}
+          <div class="flex items-center gap-1.5 text-[10px] font-mono text-gray-400 flex-shrink-0">
             <span class="truncate opacity-75">{props.repo.lastFetchedAt}</span>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 void repoStore.toggleAutoFetch(props.repo.id);
               }}
-              class={`p-0.5 rounded transition-colors ${
+              class={`p-0.5 rounded transition-colors cursor-pointer ${
                 props.repo.autoFetchEnabled
                   ? "text-cyan-400 opacity-90 hover:opacity-100"
                   : "text-gray-600 opacity-40 hover:opacity-80"
