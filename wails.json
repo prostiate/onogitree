@@ -1,0 +1,20 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "onogitree",
+  "outputfilename": "onogitree",
+  "frontend:install": "pnpm install",
+  "frontend:build": "pnpm build",
+  "frontend:dev:watcher": "pnpm dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "OnoGitTree Developer",
+    "email": "dev@onogitree.local"
+  },
+  "info": {
+    "productName": "OnoGitTree",
+    "companyName": "OnoGitTree",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright 2026",
+    "comments": "High-performance multi-repository Git GUI"
+  }
+}
