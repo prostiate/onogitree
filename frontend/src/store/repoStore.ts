@@ -1,27 +1,21 @@
-import { createSignal, createMemo } from 'solid-js';
+import { createSignal, createMemo, createRoot } from 'solid-js';
 import { RepoStatus, WorkspaceRecord } from '../types/git';
 import { WailsBridge } from '../services/wailsBridge';
 
-const [repositories, setRepositories] = createSignal<RepoStatus[]>([]);
-const [selectedRepoId, setSelectedRepoId] = createSignal<string | null>(null);
-const [searchQuery, setSearchQuery] = createSignal<string>('');
-const [isLoading, setIsLoading] = createSignal<boolean>(false);
-const [activeWorkspace, setActiveWorkspace] = createSignal<WorkspaceRecord | null>(null);
+function createRepoStore() {
+  const [repositories, setRepositories] = createSignal<RepoStatus[]>([]);
+  const [selectedRepoId, setSelectedRepoId] = createSignal<string | null>(null);
+  const [searchQuery, setSearchQuery] = createSignal<string>('');
+  const [isLoading, setIsLoading] = createSignal<boolean>(false);
+  const [activeWorkspace, setActiveWorkspace] = createSignal<WorkspaceRecord | null>(null);
 
-export const repoStore = {
-  repositories,
-  selectedRepoId,
-  searchQuery,
-  isLoading,
-  activeWorkspace,
-
-  selectedRepo: createMemo(() => {
+  const selectedRepo = createMemo(() => {
     const id = selectedRepoId();
     if (!id) return repositories()[0] || null;
     return repositories().find((r) => r.id === id) || null;
-  }),
+  });
 
-  filteredRepositories: createMemo(() => {
+  const filteredRepositories = createMemo(() => {
     const query = searchQuery().toLowerCase().trim();
     const list = repositories();
     if (!query) {
@@ -36,154 +30,166 @@ export const repoStore = {
           r.path.toLowerCase().includes(query)
       )
       .sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
-  }),
+  });
 
-  setSearchQuery(q: string) {
-    setSearchQuery(q);
-  },
+  return {
+    repositories,
+    selectedRepoId,
+    searchQuery,
+    isLoading,
+    activeWorkspace,
+    selectedRepo,
+    filteredRepositories,
 
-  selectRepo(id: string) {
-    setSelectedRepoId(id);
-  },
+    setSearchQuery(q: string) {
+      setSearchQuery(q);
+    },
 
-  async loadWorkspace() {
-    setIsLoading(true);
-    try {
-      const ws = await WailsBridge.getActiveWorkspace();
-      setActiveWorkspace(ws);
-      const statuses = await WailsBridge.refreshAll();
-      setRepositories(statuses);
-      if (statuses.length > 0 && !selectedRepoId()) {
-        setSelectedRepoId(statuses[0].id);
+    selectRepo(id: string) {
+      setSelectedRepoId(id);
+    },
+
+    async loadWorkspace() {
+      setIsLoading(true);
+      try {
+        const ws = await WailsBridge.getActiveWorkspace();
+        setActiveWorkspace(ws);
+        const statuses = await WailsBridge.refreshAll();
+        setRepositories(statuses);
+        if (statuses.length > 0 && !selectedRepoId()) {
+          setSelectedRepoId(statuses[0].id);
+        }
+      } catch (err) {
+        console.error('Failed to load workspace:', err);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.error('Failed to load workspace:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  },
+    },
 
-  async addRepository(path: string) {
-    setIsLoading(true);
-    try {
-      const status = await WailsBridge.addRepository(path);
-      setRepositories((prev) => {
-        const exists = prev.some((r) => r.id === status.id);
-        if (exists) return prev.map((r) => (r.id === status.id ? status : r));
-        return [...prev, status];
-      });
-      setSelectedRepoId(status.id);
-    } catch (err) {
-      console.error('Failed to add repository:', err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  },
-
-  async removeRepository(id: string) {
-    try {
-      await WailsBridge.removeRepository(id);
-      setRepositories((prev) => prev.filter((r) => r.id !== id));
-      if (selectedRepoId() === id) {
-        const remaining = repositories();
-        setSelectedRepoId(remaining.length > 0 ? remaining[0].id : null);
+    async addRepository(path: string) {
+      setIsLoading(true);
+      try {
+        const status = await WailsBridge.addRepository(path);
+        setRepositories((prev) => {
+          const exists = prev.some((r) => r.id === status.id);
+          if (exists) return prev.map((r) => (r.id === status.id ? status : r));
+          return [...prev, status];
+        });
+        setSelectedRepoId(status.id);
+      } catch (err) {
+        console.error('Failed to add repository:', err);
+        throw err;
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.error('Failed to remove repository:', err);
-    }
-  },
+    },
 
-  async togglePin(id: string) {
-    const repo = repositories().find((r) => r.id === id);
-    if (!repo) return;
-    const newPinned = !repo.isPinned;
-    try {
-      await WailsBridge.togglePin(id, newPinned);
-      setRepositories((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, isPinned: newPinned } : r))
-      );
-    } catch (err) {
-      console.error('Failed to toggle pin:', err);
-    }
-  },
+    async removeRepository(id: string) {
+      try {
+        await WailsBridge.removeRepository(id);
+        setRepositories((prev) => prev.filter((r) => r.id !== id));
+        if (selectedRepoId() === id) {
+          const remaining = repositories();
+          setSelectedRepoId(remaining.length > 0 ? remaining[0].id : null);
+        }
+      } catch (err) {
+        console.error('Failed to remove repository:', err);
+      }
+    },
 
-  async toggleAutoFetch(id: string) {
-    const repo = repositories().find((r) => r.id === id);
-    if (!repo) return;
-    const newAutoFetch = !repo.autoFetchEnabled;
-    try {
-      await WailsBridge.toggleAutoFetch(id, newAutoFetch);
-      setRepositories((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, autoFetchEnabled: newAutoFetch } : r))
-      );
-    } catch (err) {
-      console.error('Failed to toggle auto fetch:', err);
-    }
-  },
+    async togglePin(id: string) {
+      const repo = repositories().find((r) => r.id === id);
+      if (!repo) return;
+      const newPinned = !repo.isPinned;
+      try {
+        await WailsBridge.togglePin(id, newPinned);
+        setRepositories((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, isPinned: newPinned } : r))
+        );
+      } catch (err) {
+        console.error('Failed to toggle pin:', err);
+      }
+    },
 
-  async refreshRepo(path: string) {
-    try {
-      const status = await WailsBridge.getRepoStatus(path);
-      setRepositories((prev) => prev.map((r) => (r.id === path ? status : r)));
-    } catch (err) {
-      console.error('Failed to refresh repo status:', err);
-    }
-  },
+    async toggleAutoFetch(id: string) {
+      const repo = repositories().find((r) => r.id === id);
+      if (!repo) return;
+      const newAutoFetch = !repo.autoFetchEnabled;
+      try {
+        await WailsBridge.toggleAutoFetch(id, newAutoFetch);
+        setRepositories((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, autoFetchEnabled: newAutoFetch } : r))
+        );
+      } catch (err) {
+        console.error('Failed to toggle auto fetch:', err);
+      }
+    },
 
-  async refreshAll() {
-    setIsLoading(true);
-    try {
-      const statuses = await WailsBridge.refreshAll();
-      setRepositories(statuses);
-    } catch (err) {
-      console.error('Failed to refresh all repos:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  },
+    async refreshRepo(path: string) {
+      try {
+        const status = await WailsBridge.getRepoStatus(path);
+        setRepositories((prev) => prev.map((r) => (r.id === path ? status : r)));
+      } catch (err) {
+        console.error('Failed to refresh repo status:', err);
+      }
+    },
 
-  async checkoutBranch(repoPath: string, branchName: string) {
-    setIsLoading(true);
-    try {
-      await WailsBridge.checkoutBranch(repoPath, branchName);
-      await this.refreshRepo(repoPath);
-    } catch (err) {
-      console.error('Failed to checkout branch:', err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  },
+    async refreshAll() {
+      setIsLoading(true);
+      try {
+        const statuses = await WailsBridge.refreshAll();
+        setRepositories(statuses);
+      } catch (err) {
+        console.error('Failed to refresh all repos:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    },
 
-  async stageFiles(repoPath: string, files: string[]) {
-    try {
-      await WailsBridge.stageFiles(repoPath, files);
-      await this.refreshRepo(repoPath);
-    } catch (err) {
-      console.error('Failed to stage files:', err);
-    }
-  },
+    async checkoutBranch(repoPath: string, branchName: string) {
+      setIsLoading(true);
+      try {
+        await WailsBridge.checkoutBranch(repoPath, branchName);
+        await this.refreshRepo(repoPath);
+      } catch (err) {
+        console.error('Failed to checkout branch:', err);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
 
-  async unstageFiles(repoPath: string, files: string[]) {
-    try {
-      await WailsBridge.unstageFiles(repoPath, files);
-      await this.refreshRepo(repoPath);
-    } catch (err) {
-      console.error('Failed to unstage files:', err);
-    }
-  },
+    async stageFiles(repoPath: string, files: string[]) {
+      try {
+        await WailsBridge.stageFiles(repoPath, files);
+        await this.refreshRepo(repoPath);
+      } catch (err) {
+        console.error('Failed to stage files:', err);
+      }
+    },
 
-  async commit(repoPath: string, message: string, amend: boolean = false) {
-    setIsLoading(true);
-    try {
-      await WailsBridge.commit(repoPath, message, amend);
-      await this.refreshRepo(repoPath);
-    } catch (err) {
-      console.error('Failed to commit:', err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  },
-};
+    async unstageFiles(repoPath: string, files: string[]) {
+      try {
+        await WailsBridge.unstageFiles(repoPath, files);
+        await this.refreshRepo(repoPath);
+      } catch (err) {
+        console.error('Failed to unstage files:', err);
+      }
+    },
+
+    async commit(repoPath: string, message: string, amend: boolean = false) {
+      setIsLoading(true);
+      try {
+        await WailsBridge.commit(repoPath, message, amend);
+        await this.refreshRepo(repoPath);
+      } catch (err) {
+        console.error('Failed to commit:', err);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+  };
+}
+
+export const repoStore = createRoot(createRepoStore);

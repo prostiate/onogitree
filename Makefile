@@ -1,10 +1,12 @@
 # OnoGitTree Makefile
 # High-Performance Multi-Repository Git GUI
 
-GOPATH ?= $(shell go env GOPATH)
+GOPATH ?= $(shell go env GOPATH 2>/dev/null || echo $(HOME)/go)
+PNPM ?= $(shell which pnpm 2>/dev/null || echo $(HOME)/.local/share/pnpm/bin/pnpm)
 WAILS ?= $(shell which wails 2>/dev/null || echo $(GOPATH)/bin/wails)
 WAILS_TAGS ?= webkit2_41
-PATH := $(PATH):$(GOPATH)/bin
+
+export PATH := $(PATH):$(GOPATH)/bin:$(HOME)/go/bin:$(HOME)/.local/share/pnpm/bin:$(HOME)/.bun/bin:/snap/bin:/usr/local/bin
 
 .PHONY: all dev build test test-backend test-frontend check lint clean help setup-ubuntu
 
@@ -25,12 +27,12 @@ setup-ubuntu:
 
 dev:
 	@echo "🚀 Starting OnoGitTree in development mode..."
-	PATH="$(PATH)" $(WAILS) dev -tags "$(WAILS_TAGS)"
+	$(WAILS) dev -tags "$(WAILS_TAGS)"
 
 build:
 	@echo "📦 Building production frontend and desktop binary..."
-	cd frontend && pnpm build
-	PATH="$(PATH)" $(WAILS) build -tags "$(WAILS_TAGS)"
+	cd frontend && $(PNPM) build
+	$(WAILS) build -tags "$(WAILS_TAGS)"
 
 test: test-backend test-frontend
 	@echo "✅ All tests passed successfully!"
@@ -41,11 +43,11 @@ test-backend:
 
 test-frontend:
 	@echo "🧪 Running SolidJS frontend unit tests with Vitest..."
-	cd frontend && pnpm test
+	cd frontend && $(PNPM) test
 
 check:
 	@echo "🔍 Running strict TypeScript check..."
-	cd frontend && pnpm check
+	cd frontend && $(PNPM) check
 	@echo "🔍 Running Go vet..."
 	go vet ./...
 

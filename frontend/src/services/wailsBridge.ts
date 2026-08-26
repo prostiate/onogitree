@@ -212,19 +212,20 @@ export const WailsBridge = {
 
   onBatchProgress(callback: (event: BatchProgressEvent) => void): () => void {
     try {
-      if (typeof Runtime.EventsOn === 'function') {
+      if (typeof window !== 'undefined' && (window as any).runtime && typeof (Runtime as any).EventsOn === 'function') {
         Runtime.EventsOn('batch:progress', (data: any) => {
           callback(data as BatchProgressEvent);
         });
         return () => {
-          if (typeof Runtime.EventsOff === 'function') {
+          if (typeof (Runtime as any).EventsOff === 'function') {
             Runtime.EventsOff('batch:progress');
           }
         };
       }
-    } catch (err) {
-      console.error('EventsOn error:', err);
+    } catch {
+      // Safe fallback in test/mock environments
     }
     return () => {};
   },
+
 };
