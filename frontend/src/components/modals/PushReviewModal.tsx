@@ -1,4 +1,4 @@
-import { Component, createSignal, createEffect, For, Show } from "solid-js";
+import { Component, createSignal, createEffect, createMemo, For, Show } from "solid-js";
 import {
   X,
   ArrowUpFromLine,
@@ -12,8 +12,9 @@ import { repoStore } from "../../store/repoStore";
 import { batchStore } from "../../store/batchStore";
 
 export const PushReviewModal: Component = () => {
-  const aheadRepos = () =>
-    repoStore.repositories().filter((r) => r.aheadCount > 0);
+  const aheadRepos = createMemo(() =>
+    repoStore.repositories().filter((r) => r.aheadCount > 0),
+  );
   const [selectedToPush, setSelectedToPush] = createSignal<Set<string>>(
     new Set(),
   );

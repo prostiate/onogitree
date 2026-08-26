@@ -1,4 +1,4 @@
-import { createSignal, createMemo, createRoot } from "solid-js";
+import { createSignal, createMemo, createRoot, batch } from "solid-js";
 import {
   RepoStatus,
   WorkspaceRecord,
@@ -105,11 +105,13 @@ function createRepoStore() {
     },
 
     selectRepo(id: string) {
-      setSelectedRepoId(id);
-      setSelectedFileDiff(null);
-      setExpandedCommitHash(null);
-      setExpandedCommitHashes(new Set<string>());
-      setSelectedCommitDetail(null);
+      batch(() => {
+        setSelectedRepoId(id);
+        setSelectedFileDiff(null);
+        setExpandedCommitHash(null);
+        setExpandedCommitHashes(new Set<string>());
+        setSelectedCommitDetail(null);
+      });
       const repo = repositories().find((r) => r.id === id || r.path === id);
       if (repo) {
         void this.loadRecentCommits(repo.path);
@@ -130,8 +132,10 @@ function createRepoStore() {
       const cacheKey = `${repoPath}::${commitHash}`;
       if (commitCache.has(cacheKey)) {
         const cached = commitCache.get(cacheKey)!;
-        setCommitDetailsMap((prev) => ({ ...prev, [commitHash]: cached }));
-        setSelectedCommitDetail(cached);
+        batch(() => {
+          setCommitDetailsMap((prev) => ({ ...prev, [commitHash]: cached }));
+          setSelectedCommitDetail(cached);
+        });
         return cached;
       }
 
@@ -141,8 +145,10 @@ function createRepoStore() {
         if (detail) {
           commitCache.set(cacheKey, detail);
           commitCache.set(commitHash, detail);
-          setCommitDetailsMap((prev) => ({ ...prev, [commitHash]: detail }));
-          setSelectedCommitDetail(detail);
+          batch(() => {
+            setCommitDetailsMap((prev) => ({ ...prev, [commitHash]: detail }));
+            setSelectedCommitDetail(detail);
+          });
           return detail;
         }
       } catch (err) {
@@ -162,18 +168,22 @@ function createRepoStore() {
       if (!repo) return;
       const isExpanded = expandedCommitHashes().has(commitHash);
       if (isExpanded) {
-        setExpandedCommitHashes((prev) => {
-          const next = new Set(prev);
-          next.delete(commitHash);
-          return next;
+        batch(() => {
+          setExpandedCommitHashes((prev) => {
+            const next = new Set(prev);
+            next.delete(commitHash);
+            return next;
+          });
+          if (expandedCommitHash() === commitHash) {
+            setExpandedCommitHash(null);
+            setSelectedCommitDetail(null);
+          }
         });
-        if (expandedCommitHash() === commitHash) {
-          setExpandedCommitHash(null);
-          setSelectedCommitDetail(null);
-        }
       } else {
-        setExpandedCommitHashes((prev) => new Set(prev).add(commitHash));
-        setExpandedCommitHash(commitHash);
+        batch(() => {
+          setExpandedCommitHashes((prev) => new Set(prev).add(commitHash));
+          setExpandedCommitHash(commitHash);
+        });
         await this.fetchAndCacheCommit(repo.path, commitHash);
       }
     },
@@ -181,29 +191,38 @@ function createRepoStore() {
     async expandAllCommits(hashes: string[]) {
       const repo = selectedRepo();
       if (!repo) return;
-      setExpandedCommitHashes(new Set(hashes));
-      if (hashes.length > 0) {
-        setExpandedCommitHash(hashes[0]);
-      }
+      batch(() => {
+        setExpandedCommitHashes(new Set(hashes));
+        if (hashes.length > 0) {
+          setExpandedCommitHash(hashes[0]);
+        }
+      });
       await Promise.all(
         hashes.map((h) => this.fetchAndCacheCommit(repo.path, h)),
       );
     },
 
     collapseAllCommits() {
-      setExpandedCommitHashes(new Set<string>());
-      setExpandedCommitHash(null);
-      setSelectedCommitDetail(null);
+      batch(() => {
+        setExpandedCommitHashes(new Set<string>());
+        setExpandedCommitHash(null);
+        setSelectedCommitDetail(null);
+      });
     },
 
     setExpandedCommit(hash: string | null) {
-      setExpandedCommitHash(hash);
       if (!hash) {
-        setSelectedCommitDetail(null);
-        setExpandedCommitHashes(new Set<string>());
+        batch(() => {
+          setExpandedCommitHash(null);
+          setSelectedCommitDetail(null);
+          setExpandedCommitHashes(new Set<string>());
+        });
         return;
       }
-      setExpandedCommitHashes(new Set<string>([hash]));
+      batch(() => {
+        setExpandedCommitHash(hash);
+        setExpandedCommitHashes(new Set<string>([hash]));
+      });
       void this.selectCommit(hash);
     },
 
@@ -214,9 +233,11 @@ function createRepoStore() {
     },
 
     clearSelectedCommit() {
-      setSelectedCommitDetail(null);
-      setExpandedCommitHash(null);
-      setExpandedCommitHashes(new Set<string>());
+      batch(() => {
+        setSelectedCommitDetail(null);
+        setExpandedCommitHash(null);
+        setExpandedCommitHashes(new Set<string>());
+      });
     },
 
     async getDiff(
@@ -268,11 +289,15 @@ function createRepoStore() {
       setIsLoading(true);
       try {
         const ws = await WailsBridge.getActiveWorkspace();
-        setActiveWorkspace(ws);
         const statuses = await WailsBridge.refreshAll();
-        setRepositories(statuses);
-        if (statuses.length > 0 && !selectedRepoId()) {
-          setSelectedRepoId(statuses[0].id);
+        batch(() => {
+          setActiveWorkspace(ws);
+          setRepositories(statuses);
+          if (statuses.length > 0 && !selectedRepoId()) {
+            setSelectedRepoId(statuses[0].id);
+          }
+        });
+        if (statuses.length > 0) {
           void this.loadRecentCommits(statuses[0].path);
         }
       } catch (err) {
@@ -286,17 +311,19 @@ function createRepoStore() {
       setIsLoading(true);
       try {
         const status = await WailsBridge.addRepository(path);
-        setRepositories((prev) => {
-          const exists = prev.some(
-            (r) => r.id === status.id || r.path === status.path,
-          );
-          if (exists)
-            return prev.map((r) =>
-              r.id === status.id || r.path === status.path ? status : r,
+        batch(() => {
+          setRepositories((prev) => {
+            const exists = prev.some(
+              (r) => r.id === status.id || r.path === status.path,
             );
-          return [...prev, status];
+            if (exists)
+              return prev.map((r) =>
+                r.id === status.id || r.path === status.path ? status : r,
+              );
+            return [...prev, status];
+          });
+          setSelectedRepoId(status.id);
         });
-        setSelectedRepoId(status.id);
         void this.loadRecentCommits(status.path);
       } catch (err) {
         console.error("Failed to add repository:", err);

@@ -1,4 +1,4 @@
-import { Component, createSignal, createEffect, For, Show } from "solid-js";
+import { Component, createSignal, createEffect, createMemo, For, Show } from "solid-js";
 import {
   X,
   GitBranch,
@@ -36,12 +36,12 @@ export const BranchPicker: Component<BranchPickerProps> = (props) => {
     }
   });
 
-  const filteredBranches = () => {
+  const filteredBranches = createMemo(() => {
     const q = search().toLowerCase().trim();
     const list = branches();
     if (!q) return list;
     return list.filter((b) => b.name.toLowerCase().includes(q));
-  };
+  });
 
   const handleCheckout = async (branchName: string) => {
     if (!props.repo) return;

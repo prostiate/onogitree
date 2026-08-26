@@ -1,4 +1,4 @@
-import { Component, createSignal, Show } from "solid-js";
+import { Component, createSignal, createMemo, Show } from "solid-js";
 import { X, ArrowDownToLine, AlertTriangle, CheckCircle2 } from "lucide-solid";
 import { repoStore } from "../../store/repoStore";
 import { batchStore } from "../../store/batchStore";
@@ -7,8 +7,10 @@ export const PullAllModal: Component = () => {
   const [skipDirty, setSkipDirty] = createSignal<boolean>(true);
 
   const repos = () => repoStore.repositories();
-  const dirtyCount = () => repos().filter((r) => r.isDirty).length;
-  const cleanCount = () => repos().length - dirtyCount();
+  const dirtyCount = createMemo(
+    () => repos().filter((r) => r.isDirty).length,
+  );
+  const cleanCount = createMemo(() => repos().length - dirtyCount());
 
   return (
     <Show when={batchStore.isPullModalOpen()}>
