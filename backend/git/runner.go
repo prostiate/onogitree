@@ -14,15 +14,15 @@ import (
 
 // GitCommandLog records executed Git CLI command metadata and outputs for developer debugging.
 type GitCommandLog struct {
-	ID         string    `json:"id"`
-	Timestamp  time.Time `json:"timestamp"`
-	RepoPath   string    `json:"repoPath"`
-	Command    string    `json:"command"`
-	DurationMs int64     `json:"durationMs"`
-	Success    bool      `json:"success"`
-	Stdout     string    `json:"stdout"`
-	Stderr     string    `json:"stderr"`
-	Error      string    `json:"error,omitempty"`
+	ID         string `json:"id"`
+	Timestamp  string `json:"timestamp"`
+	RepoPath   string `json:"repoPath"`
+	Command    string `json:"command"`
+	DurationMs int64  `json:"durationMs"`
+	Success    bool   `json:"success"`
+	Stdout     string `json:"stdout"`
+	Stderr     string `json:"stderr"`
+	Error      string `json:"error,omitempty"`
 }
 
 // Runner defines the interface for executing Git commands.
@@ -130,7 +130,7 @@ func (r *CommandRunner) execute(ctx context.Context, repoPath string, isBatch bo
 	// Record execution log in in-memory ring buffer
 	r.recordLog(GitCommandLog{
 		ID:         fmt.Sprintf("log-%d", time.Now().UnixNano()),
-		Timestamp:  startTime,
+		Timestamp:  startTime.Format(time.RFC3339),
 		RepoPath:   repoPath,
 		Command:    cmdStr,
 		DurationMs: duration,
