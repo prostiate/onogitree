@@ -9,6 +9,7 @@ import {
   BatchProgressEvent,
   CommitSummary,
   CommitDetail,
+  GitCommandLog,
 } from "../types/git";
 
 export const WailsBridge = {
@@ -322,6 +323,28 @@ export const WailsBridge = {
     } catch (err) {
       console.error("GetCommitFileDiff error:", err);
       return "";
+    }
+  },
+
+  async getGitCommandLogs(limit = 100): Promise<GitCommandLog[]> {
+    try {
+      if (typeof (App as any).GetGitCommandLogs === "function") {
+        const logs = await (App as any).GetGitCommandLogs(limit);
+        return (logs || []) as GitCommandLog[];
+      }
+    } catch (err) {
+      console.error("GetGitCommandLogs error:", err);
+    }
+    return [];
+  },
+
+  async clearGitCommandLogs(): Promise<void> {
+    try {
+      if (typeof (App as any).ClearGitCommandLogs === "function") {
+        await (App as any).ClearGitCommandLogs();
+      }
+    } catch (err) {
+      console.error("ClearGitCommandLogs error:", err);
     }
   },
 

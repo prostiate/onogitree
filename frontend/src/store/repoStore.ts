@@ -13,11 +13,23 @@ export interface DiffSelection {
   commitHash?: string; // If diffing a file from a commit
 }
 
+export interface AppErrorDetail {
+  title: string;
+  repoPath?: string;
+  command?: string;
+  message: string;
+  stderr?: string;
+  timestamp: number;
+}
+
 function createRepoStore() {
   const [repositories, setRepositories] = createSignal<RepoStatus[]>([]);
   const [selectedRepoId, setSelectedRepoId] = createSignal<string | null>(null);
   const [searchQuery, setSearchQuery] = createSignal<string>("");
   const [isLoading, setIsLoading] = createSignal<boolean>(false);
+  const [activeError, setActiveError] = createSignal<AppErrorDetail | null>(
+    null,
+  );
   const [activeWorkspace, setActiveWorkspace] =
     createSignal<WorkspaceRecord | null>(null);
   const [selectedFileDiff, setSelectedFileDiff] =
@@ -510,14 +522,38 @@ function createRepoStore() {
       }
     },
 
+    activeError,
+
+    reportError(err: Partial<AppErrorDetail> & { message: string }) {
+      setActiveError({
+        title: err.title || "Operation Failed",
+        repoPath: err.repoPath,
+        command: err.command,
+        message: err.message,
+        stderr: err.stderr,
+        timestamp: err.timestamp || Date.now(),
+      });
+    },
+
+    clearActiveError() {
+      setActiveError(null);
+    },
+
     async commit(repoPath: string, message: string, amend: boolean = false) {
       setIsLoading(true);
       try {
         this.invalidateDiffCache();
         await WailsBridge.commit(repoPath, message, amend);
         await this.refreshRepo(repoPath);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to commit:", err);
+        const errMsg = err?.message || String(err);
+        this.reportError({
+          title: "Git Commit Failed",
+          repoPath,
+          command: amend ? "git commit --amend" : `git commit -m "${message.slice(0, 30)}..."`,
+          message: errMsg,
+        });
         throw err;
       } finally {
         setIsLoading(false);
@@ -529,8 +565,15 @@ function createRepoStore() {
       try {
         await WailsBridge.pushRepository(repoPath);
         await this.refreshRepo(repoPath);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to push:", err);
+        const errMsg = err?.message || String(err);
+        this.reportError({
+          title: "Git Push Failed",
+          repoPath,
+          command: "git push",
+          message: errMsg,
+        });
         throw err;
       } finally {
         setIsLoading(false);

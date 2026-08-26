@@ -14,6 +14,7 @@ import { PullAllModal } from "./components/modals/PullAllModal";
 import { PushReviewModal } from "./components/modals/PushReviewModal";
 import { SettingsModal } from "./components/modals/SettingsModal";
 import { DiagnosticsModal } from "./components/modals/DiagnosticsModal";
+import { ErrorDialog } from "./components/modals/ErrorDialog";
 import { repoStore } from "./store/repoStore";
 import { RepoStatus } from "./types/git";
 
@@ -308,6 +309,10 @@ export const App: Component = () => {
       <DiagnosticsModal
         isOpen={isDiagnosticsOpen()}
         onClose={() => setIsDiagnosticsOpen(false)}
+      />
+
+      <ErrorDialog
+        onOpenDiagnostics={() => setIsDiagnosticsOpen(true)}
       />
 
       <PullAllModal />

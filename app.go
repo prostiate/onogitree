@@ -297,9 +297,21 @@ func (a *App) GetCommitFileDiff(repoPath string, commitHash string, filePath str
 	return a.branchSvc.GetCommitFileDiff(a.ctx, repoPath, commitHash, filePath)
 }
 
+// GetGitCommandLogs returns recent Git command execution history and terminal outputs for developer debugging.
+func (a *App) GetGitCommandLogs(limit int) ([]git.GitCommandLog, error) {
+	if cr, ok := a.runner.(*git.CommandRunner); ok {
+		return cr.GetLogs(limit), nil
+	}
+	return []git.GitCommandLog{}, nil
+}
 
-
-
+// ClearGitCommandLogs clears the in-memory execution logs.
+func (a *App) ClearGitCommandLogs() error {
+	if cr, ok := a.runner.(*git.CommandRunner); ok {
+		cr.ClearLogs()
+	}
+	return nil
+}
 
 // RunBatchPull triggers parallel pull across all open repositories emitting real-time events.
 func (a *App) RunBatchPull(skipDirty bool) error {

@@ -121,3 +121,16 @@ export interface CommitDetail {
   totalAdditions: number;
   totalDeletions: number;
 }
+
+export interface GitCommandLog {
+  id: string;
+  timestamp: string;
+  repoPath: string;
+  command: string;
+  durationMs: number;
+  success: boolean;
+  stdout: string;
+  stderr: string;
+  error?: string;
+}
+
