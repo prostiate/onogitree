@@ -68,6 +68,14 @@ Thumbs.db
 *.swo
 *~
 
-# AI & Agent local caches
+# AI, Agents, Prompts & Local Caches
+.agents/
 .claude/
 .gemini/
+.codex/
+docs/prompts/
+docs/prompt/
+docs/prompts/**
+docs/prompt/**
+skills-lock.json
+
