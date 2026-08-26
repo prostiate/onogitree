@@ -23,7 +23,12 @@ import {
   ArrowDown,
   MoreHorizontal,
   GitCommit,
+  ChevronDown,
+  ChevronRight,
+  FoldVertical,
+  UnfoldVertical,
 } from "lucide-solid";
+
 import { repoStore } from "../../store/repoStore";
 import { settingsStore } from "../../store/settingsStore";
 
@@ -35,12 +40,23 @@ interface ParsedLine {
   newLineNo?: number;
 }
 
+interface FileDiffSection {
+  id: string;
+  filePath: string;
+  lines: ParsedLine[];
+  additions: number;
+  deletions: number;
+}
+
 export const DiffViewer: Component = () => {
   const [diffContent, setDiffContent] = createSignal<string>("");
   const [isLoadingDiff, setIsLoadingDiff] = createSignal<boolean>(false);
   const [copied, setCopied] = createSignal<boolean>(false);
   const [showMoreMenu, setShowMoreMenu] = createSignal<boolean>(false);
   const [currentHunkIndex, setCurrentHunkIndex] = createSignal<number>(0);
+  const [collapsedFileIds, setCollapsedFileIds] = createSignal<Set<string>>(
+    new Set<string>(),
+  );
 
   const selectedDiff = () => repoStore.selectedFileDiff();
   const activeRepo = () => repoStore.selectedRepo();
@@ -67,7 +83,6 @@ export const DiffViewer: Component = () => {
     }
 
     try {
-      // Use cached fast diff loader to prevent flashing
       const content = await repoStore.getDiff(
         repo.path,
         diff.filePath,
@@ -75,6 +90,8 @@ export const DiffViewer: Component = () => {
         diff.commitHash,
       );
       setDiffContent(content);
+      // Reset collapsed files on new diff load (all expanded by default)
+      setCollapsedFileIds(new Set<string>());
     } catch (err) {
       console.error("Failed to load diff:", err);
       setDiffContent("Error loading diff.");
@@ -83,17 +100,58 @@ export const DiffViewer: Component = () => {
     }
   });
 
-  const parsedLines = createMemo<ParsedLine[]>(() => {
+  // Parse raw git diff stream into distinct FileDiffSection[]
+  const fileSections = createMemo<FileDiffSection[]>(() => {
     const raw = diffContent();
     if (!raw) return [];
 
     const lines = raw.split("\n");
-    const result: ParsedLine[] = [];
+    const sections: FileDiffSection[] = [];
+    let currentSection: FileDiffSection | null = null;
     let oldLine = 0;
     let newLine = 0;
+    let lineCounter = 0;
 
     for (let idx = 0; idx < lines.length; idx++) {
       const line = lines[idx];
+
+      // Detect start of a new file diff: "diff --git a/... b/..."
+      if (line.startsWith("diff --git")) {
+        if (currentSection) {
+          sections.push(currentSection);
+        }
+
+        // Extract filePath from "diff --git a/... b/..."
+        const match = line.match(/diff --git a\/(.*) b\/(.*)/);
+        const path = match ? match[2] : `file-${sections.length + 1}`;
+
+        currentSection = {
+          id: `file-${sections.length}-${path}`,
+          filePath: path,
+          lines: [],
+          additions: 0,
+          deletions: 0,
+        };
+        oldLine = 0;
+        newLine = 0;
+      }
+
+      if (!currentSection) {
+        // Fallback for single file diffs without diff --git header
+        const fallbackPath =
+          selectedDiff()?.filePath && selectedDiff()?.filePath !== "__ALL__"
+            ? selectedDiff()!.filePath
+            : "diff-output";
+        currentSection = {
+          id: `file-0-${fallbackPath}`,
+          filePath: fallbackPath,
+          lines: [],
+          additions: 0,
+          deletions: 0,
+        };
+      }
+
+      lineCounter++;
       let type: ParsedLine["type"] = "context";
 
       if (
@@ -103,7 +161,7 @@ export const DiffViewer: Component = () => {
         line.startsWith("+++")
       ) {
         type = "header";
-        result.push({ id: idx, line, type });
+        currentSection.lines.push({ id: lineCounter, line, type });
       } else if (line.startsWith("@@")) {
         type = "hunk";
         const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
@@ -111,21 +169,33 @@ export const DiffViewer: Component = () => {
           oldLine = parseInt(match[1], 10) - 1;
           newLine = parseInt(match[2], 10) - 1;
         }
-        result.push({ id: idx, line, type });
+        currentSection.lines.push({ id: lineCounter, line, type });
       } else if (line.startsWith("+")) {
         type = "addition";
         newLine++;
-        result.push({ id: idx, line, type, newLineNo: newLine });
+        currentSection.additions++;
+        currentSection.lines.push({
+          id: lineCounter,
+          line,
+          type,
+          newLineNo: newLine,
+        });
       } else if (line.startsWith("-")) {
         type = "deletion";
         oldLine++;
-        result.push({ id: idx, line, type, oldLineNo: oldLine });
+        currentSection.deletions++;
+        currentSection.lines.push({
+          id: lineCounter,
+          line,
+          type,
+          oldLineNo: oldLine,
+        });
       } else {
         type = "context";
         oldLine++;
         newLine++;
-        result.push({
-          id: idx,
+        currentSection.lines.push({
+          id: lineCounter,
           line,
           type,
           oldLineNo: oldLine,
@@ -133,30 +203,48 @@ export const DiffViewer: Component = () => {
         });
       }
     }
-    return result;
+
+    if (currentSection) {
+      sections.push(currentSection);
+    }
+
+    return sections;
   });
 
-  const hunks = createMemo(() =>
-    parsedLines().filter((l) => l.type === "hunk"),
-  );
+  const toggleFileCollapse = (fileId: string) => {
+    setCollapsedFileIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileId)) {
+        next.delete(fileId);
+      } else {
+        next.add(fileId);
+      }
+      return next;
+    });
+  };
+
+  const expandAllFiles = () => {
+    setCollapsedFileIds(new Set<string>());
+  };
+
+  const collapseAllFiles = () => {
+    setCollapsedFileIds(new Set(fileSections().map((f) => f.id)));
+  };
 
   const scrollToNextHunk = () => {
-    const hunkList = hunks();
-    if (hunkList.length === 0) return;
-    const nextIdx = (currentHunkIndex() + 1) % hunkList.length;
+    const list = document.querySelectorAll("[data-hunk]");
+    if (list.length === 0) return;
+    const nextIdx = (currentHunkIndex() + 1) % list.length;
     setCurrentHunkIndex(nextIdx);
-    const target = document.getElementById(`hunk-${nextIdx}`);
-    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    list[nextIdx]?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const scrollToPrevHunk = () => {
-    const hunkList = hunks();
-    if (hunkList.length === 0) return;
-    const prevIdx =
-      (currentHunkIndex() - 1 + hunkList.length) % hunkList.length;
+    const list = document.querySelectorAll("[data-hunk]");
+    if (list.length === 0) return;
+    const prevIdx = (currentHunkIndex() - 1 + list.length) % list.length;
     setCurrentHunkIndex(prevIdx);
-    const target = document.getElementById(`hunk-${prevIdx}`);
-    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    list[prevIdx]?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const copyDiff = () => {
@@ -171,7 +259,7 @@ export const DiffViewer: Component = () => {
         <div class="flex-1 flex flex-col h-full bg-[#0B0E14] text-gray-200 overflow-hidden select-none">
           {/* Top Diff Header Bar */}
           <div class="px-4 py-2.5 bg-[#121622] border-b border-gray-800/80 flex items-center justify-between gap-4 flex-shrink-0 shadow-md">
-            {/* Left side: File Path & Status Pill */}
+            {/* Left side: File Path / Scope & Status Pill */}
             <div class="flex items-center gap-3 min-w-0">
               <div class="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 flex-shrink-0">
                 <Show
@@ -207,7 +295,7 @@ export const DiffViewer: Component = () => {
                     <span class="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded text-[10px] font-mono font-bold">
                       {diff().filePath && diff().filePath !== "__ALL__"
                         ? `Commit ${diff().commitHash?.slice(0, 7)}`
-                        : "All Changed Files"}
+                        : `${fileSections().length} Files in Commit`}
                     </span>
                   </Show>
                 </div>
@@ -219,8 +307,28 @@ export const DiffViewer: Component = () => {
               </div>
             </div>
 
-            {/* Right side: Persistent Control Actions matching Screenshots */}
+            {/* Right side: Control Actions & Expand/Collapse All Buttons */}
             <div class="flex items-center gap-1.5 flex-shrink-0">
+              {/* Expand All / Collapse All Files in Diff Accordion */}
+              <div class="flex items-center bg-[#181D2B] border border-gray-700/60 rounded-lg p-0.5">
+                <button
+                  onClick={expandAllFiles}
+                  class="px-2 py-1 hover:bg-[#22293D] text-gray-400 hover:text-white rounded text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Expand All Files"
+                >
+                  <UnfoldVertical class="w-3.5 h-3.5 text-indigo-400" />
+                  <span class="hidden sm:inline">Expand All</span>
+                </button>
+                <button
+                  onClick={collapseAllFiles}
+                  class="px-2 py-1 hover:bg-[#22293D] text-gray-400 hover:text-white rounded text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Collapse All Files"
+                >
+                  <FoldVertical class="w-3.5 h-3.5 text-gray-400" />
+                  <span class="hidden sm:inline">Collapse All</span>
+                </button>
+              </div>
+
               {/* Previous / Next Hunk Navigation */}
               <div class="flex items-center bg-[#181D2B] border border-gray-700/60 rounded-lg p-0.5">
                 <button
@@ -270,8 +378,14 @@ export const DiffViewer: Component = () => {
                 </Show>
               </button>
 
-              {/* Stage / Unstage Quick Action */}
-              <Show when={!diff().commitHash}>
+              {/* Stage / Unstage Quick Action (Only for single uncommitted file) */}
+              <Show
+                when={
+                  !diff().commitHash &&
+                  diff().filePath &&
+                  diff().filePath !== "__ALL__"
+                }
+              >
                 <Show
                   when={diff().staged}
                   fallback={
@@ -349,6 +463,30 @@ export const DiffViewer: Component = () => {
 
                     <button
                       onClick={() => {
+                        expandAllFiles();
+                        setShowMoreMenu(false);
+                      }}
+                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2436] flex items-center gap-2 text-gray-200 cursor-pointer"
+                    >
+                      <UnfoldVertical class="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Expand All Files</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        collapseAllFiles();
+                        setShowMoreMenu(false);
+                      }}
+                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2436] flex items-center gap-2 text-gray-200 cursor-pointer"
+                    >
+                      <FoldVertical class="w-3.5 h-3.5 text-gray-400" />
+                      <span>Collapse All Files</span>
+                    </button>
+
+                    <div class="my-1 border-t border-gray-800" />
+
+                    <button
+                      onClick={() => {
                         copyDiff();
                         setShowMoreMenu(false);
                       }}
@@ -363,22 +501,32 @@ export const DiffViewer: Component = () => {
                       <span>{copied() ? "Copied Diff!" : "Copy Raw Diff"}</span>
                     </button>
 
-                    <button
-                      onClick={() => {
-                        const repo = activeRepo();
-                        if (repo)
-                          void repoStore.openPath(
-                            `${repo.path}/${diff().filePath}`,
-                          );
-                        setShowMoreMenu(false);
-                      }}
-                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2436] flex items-center gap-2 text-gray-200 cursor-pointer"
+                    <Show
+                      when={diff().filePath && diff().filePath !== "__ALL__"}
                     >
-                      <ExternalLink class="w-3.5 h-3.5 text-gray-400" />
-                      <span>Open File in System Editor</span>
-                    </button>
+                      <button
+                        onClick={() => {
+                          const repo = activeRepo();
+                          if (repo)
+                            void repoStore.openPath(
+                              `${repo.path}/${diff().filePath}`,
+                            );
+                          setShowMoreMenu(false);
+                        }}
+                        class="w-full text-left px-3 py-1.5 hover:bg-[#1E2436] flex items-center gap-2 text-gray-200 cursor-pointer"
+                      >
+                        <ExternalLink class="w-3.5 h-3.5 text-gray-400" />
+                        <span>Open File in System Editor</span>
+                      </button>
+                    </Show>
 
-                    <Show when={!diff().commitHash}>
+                    <Show
+                      when={
+                        !diff().commitHash &&
+                        diff().filePath &&
+                        diff().filePath !== "__ALL__"
+                      }
+                    >
                       <div class="my-1 border-t border-gray-800" />
 
                       <button
@@ -419,8 +567,8 @@ export const DiffViewer: Component = () => {
             </div>
           </div>
 
-          {/* Diff Content Body */}
-          <div class="flex-1 overflow-auto p-4 font-mono text-xs select-text leading-relaxed">
+          {/* Diff Content Body with File Accordion Cards */}
+          <div class="flex-1 overflow-auto p-4 space-y-4 font-mono text-xs select-text leading-relaxed">
             <Show
               when={!isLoadingDiff()}
               fallback={
@@ -431,7 +579,7 @@ export const DiffViewer: Component = () => {
               }
             >
               <Show
-                when={parsedLines().length > 0}
+                when={fileSections().length > 0}
                 fallback={
                   <div class="flex flex-col items-center justify-center h-full text-gray-500 gap-2 font-sans">
                     <Check class="w-8 h-8 text-emerald-400 opacity-60" />
@@ -444,163 +592,218 @@ export const DiffViewer: Component = () => {
                   </div>
                 }
               >
-                <div class="rounded-xl border border-gray-800/80 overflow-hidden bg-[#0A0D14] shadow-xl">
-                  {/* Inline Layout */}
-                  <Show when={viewLayout() === "inline"}>
-                    <For each={parsedLines()}>
-                      {(item) => {
-                        let hunkNum = -1;
-                        if (item.type === "hunk") {
-                          hunkNum = hunks().findIndex((h) => h.id === item.id);
-                        }
+                <For each={fileSections()}>
+                  {(section) => {
+                    const isCollapsed = () =>
+                      collapsedFileIds().has(section.id);
+                    const hunks = () =>
+                      section.lines.filter((l) => l.type === "hunk");
 
-                        if (item.type === "hunk") {
-                          return (
-                            <div
-                              id={`hunk-${hunkNum}`}
-                              class="px-4 py-1.5 bg-[#161B2B] text-indigo-300 font-bold border-y border-indigo-500/20 text-[11px] select-none flex items-center justify-between"
+                    return (
+                      <div class="rounded-xl border border-gray-800/80 overflow-hidden bg-[#0A0D14] shadow-xl">
+                        {/* File Accordion Header */}
+                        <div
+                          onClick={() => toggleFileCollapse(section.id)}
+                          class="px-4 py-2 bg-[#121622] hover:bg-[#161B2B] border-b border-gray-800/80 flex items-center justify-between gap-3 cursor-pointer select-none transition-colors"
+                        >
+                          <div class="flex items-center gap-2.5 min-w-0">
+                            <Show
+                              when={!isCollapsed()}
+                              fallback={
+                                <ChevronRight class="w-4 h-4 text-gray-400" />
+                              }
                             >
-                              <span>{item.line}</span>
-                              <span class="text-[10px] text-gray-500 font-normal">
-                                Hunk {hunkNum + 1} of {hunks().length}
-                              </span>
-                            </div>
-                          );
-                        }
-                        if (item.type === "addition") {
-                          return (
-                            <div class="px-3 py-0.5 bg-emerald-500/15 text-emerald-200 border-l-2 border-l-emerald-500 flex items-start hover:bg-emerald-500/20 transition-colors">
-                              <span class="w-8 text-right text-gray-600 select-none mr-2 text-[10.5px]"></span>
-                              <span class="w-8 text-right text-emerald-400/80 select-none mr-3 text-[10.5px] font-bold">
-                                {item.newLineNo}
-                              </span>
-                              <span class="text-emerald-400 select-none mr-2 font-bold">
-                                +
-                              </span>
-                              <pre class="flex-1 whitespace-pre-wrap font-mono break-all">
-                                {item.line.slice(1)}
-                              </pre>
-                            </div>
-                          );
-                        }
-                        if (item.type === "deletion") {
-                          return (
-                            <div class="px-3 py-0.5 bg-rose-500/15 text-rose-300 border-l-2 border-l-rose-500 flex items-start hover:bg-rose-500/20 transition-colors">
-                              <span class="w-8 text-right text-rose-400/80 select-none mr-2 text-[10.5px] font-bold">
-                                {item.oldLineNo}
-                              </span>
-                              <span class="w-8 text-right text-gray-600 select-none mr-3 text-[10.5px]"></span>
-                              <span class="text-rose-400 select-none mr-2 font-bold">
-                                -
-                              </span>
-                              <pre class="flex-1 whitespace-pre-wrap font-mono break-all line-through opacity-80">
-                                {item.line.slice(1)}
-                              </pre>
-                            </div>
-                          );
-                        }
-                        if (item.type === "header") {
-                          return (
-                            <div class="px-4 py-0.5 text-gray-500 bg-[#0E121B] text-[11px]">
-                              {item.line}
-                            </div>
-                          );
-                        }
-                        return (
-                          <div class="px-3 py-0.5 text-gray-300 hover:bg-[#111522] flex items-start">
-                            <span class="w-8 text-right text-gray-600 select-none mr-2 text-[10.5px]">
-                              {item.oldLineNo}
+                              <ChevronDown class="w-4 h-4 text-indigo-400" />
+                            </Show>
+                            <FileCode class="w-4 h-4 text-indigo-400/80 flex-shrink-0" />
+                            <span class="font-bold text-white text-xs font-mono truncate">
+                              {section.filePath}
                             </span>
-                            <span class="w-8 text-right text-gray-600 select-none mr-3 text-[10.5px]">
-                              {item.newLineNo}
-                            </span>
-                            <span class="select-none mr-2 opacity-20"> </span>
-                            <pre class="flex-1 whitespace-pre-wrap font-mono break-all">
-                              {item.line}
-                            </pre>
                           </div>
-                        );
-                      }}
-                    </For>
-                  </Show>
 
-                  {/* Side-by-Side (Split) Layout */}
-                  <Show when={viewLayout() === "split"}>
-                    <div class="divide-y divide-gray-800/40">
-                      <For each={parsedLines()}>
-                        {(item) => {
-                          if (item.type === "hunk") {
-                            return (
-                              <div class="px-4 py-1.5 bg-[#161B2B] text-indigo-300 font-bold border-y border-indigo-500/20 text-[11px] select-none">
-                                {item.line}
-                              </div>
-                            );
-                          }
-                          if (item.type === "header") {
-                            return (
-                              <div class="px-4 py-0.5 text-gray-500 bg-[#0E121B] text-[11px]">
-                                {item.line}
-                              </div>
-                            );
-                          }
-                          return (
-                            <div class="grid grid-cols-2 divide-x divide-gray-800 text-[11.5px]">
-                              {/* Left Column: Old Version */}
-                              <div
-                                class={`px-3 py-0.5 flex items-start ${
-                                  item.type === "deletion"
-                                    ? "bg-rose-500/15 text-rose-300"
-                                    : item.type === "addition"
-                                      ? "bg-transparent text-transparent"
-                                      : "text-gray-300"
-                                }`}
-                              >
-                                <span class="w-7 text-right text-gray-600 select-none mr-2 text-[10px]">
-                                  {item.oldLineNo || ""}
-                                </span>
-                                <span class="mr-2 select-none">
-                                  {item.type === "deletion" ? "-" : " "}
-                                </span>
-                                <pre class="flex-1 whitespace-pre-wrap font-mono break-all">
-                                  {item.type === "deletion"
-                                    ? item.line.slice(1)
-                                    : item.type === "addition"
-                                      ? ""
-                                      : item.line}
-                                </pre>
-                              </div>
+                          <div class="flex items-center gap-2 font-mono text-[11px] tabular-nums flex-shrink-0">
+                            <Show when={section.additions > 0}>
+                              <span class="px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 font-bold rounded border border-emerald-500/30">
+                                +{section.additions}
+                              </span>
+                            </Show>
+                            <Show when={section.deletions > 0}>
+                              <span class="px-1.5 py-0.5 bg-rose-500/15 text-rose-400 font-bold rounded border border-rose-500/30">
+                                -{section.deletions}
+                              </span>
+                            </Show>
+                          </div>
+                        </div>
 
-                              {/* Right Column: New Version */}
-                              <div
-                                class={`px-3 py-0.5 flex items-start ${
-                                  item.type === "addition"
-                                    ? "bg-emerald-500/15 text-emerald-200"
-                                    : item.type === "deletion"
-                                      ? "bg-transparent text-transparent"
-                                      : "text-gray-300"
-                                }`}
-                              >
-                                <span class="w-7 text-right text-gray-600 select-none mr-2 text-[10px]">
-                                  {item.newLineNo || ""}
-                                </span>
-                                <span class="mr-2 select-none">
-                                  {item.type === "addition" ? "+" : " "}
-                                </span>
-                                <pre class="flex-1 whitespace-pre-wrap font-mono break-all">
-                                  {item.type === "addition"
-                                    ? item.line.slice(1)
-                                    : item.type === "deletion"
-                                      ? ""
-                                      : item.line}
-                                </pre>
-                              </div>
+                        {/* File Diff Content (Collapsible) */}
+                        <Show when={!isCollapsed()}>
+                          {/* Inline Layout */}
+                          <Show when={viewLayout() === "inline"}>
+                            <For each={section.lines}>
+                              {(item) => {
+                                let hunkNum = -1;
+                                if (item.type === "hunk") {
+                                  hunkNum = hunks().findIndex(
+                                    (h) => h.id === item.id,
+                                  );
+                                }
+
+                                if (item.type === "hunk") {
+                                  return (
+                                    <div
+                                      data-hunk={item.id}
+                                      class="px-4 py-1.5 bg-[#161B2B] text-indigo-300 font-bold border-y border-indigo-500/20 text-[11px] select-none flex items-center justify-between"
+                                    >
+                                      <span>{item.line}</span>
+                                      <span class="text-[10px] text-gray-500 font-normal">
+                                        Hunk {hunkNum + 1} of {hunks().length}
+                                      </span>
+                                    </div>
+                                  );
+                                }
+                                if (item.type === "addition") {
+                                  return (
+                                    <div class="px-3 py-0.5 bg-emerald-500/15 text-emerald-200 border-l-2 border-l-emerald-500 flex items-start hover:bg-emerald-500/20 transition-colors">
+                                      <span class="w-8 text-right text-gray-600 select-none mr-2 text-[10.5px]"></span>
+                                      <span class="w-8 text-right text-emerald-400/80 select-none mr-3 text-[10.5px] font-bold">
+                                        {item.newLineNo}
+                                      </span>
+                                      <span class="text-emerald-400 select-none mr-2 font-bold">
+                                        +
+                                      </span>
+                                      <pre class="flex-1 whitespace-pre-wrap font-mono break-all">
+                                        {item.line.slice(1)}
+                                      </pre>
+                                    </div>
+                                  );
+                                }
+                                if (item.type === "deletion") {
+                                  return (
+                                    <div class="px-3 py-0.5 bg-rose-500/15 text-rose-300 border-l-2 border-l-rose-500 flex items-start hover:bg-rose-500/20 transition-colors">
+                                      <span class="w-8 text-right text-rose-400/80 select-none mr-2 text-[10.5px] font-bold">
+                                        {item.oldLineNo}
+                                      </span>
+                                      <span class="w-8 text-right text-gray-600 select-none mr-3 text-[10.5px]"></span>
+                                      <span class="text-rose-400 select-none mr-2 font-bold">
+                                        -
+                                      </span>
+                                      <pre class="flex-1 whitespace-pre-wrap font-mono break-all line-through opacity-80">
+                                        {item.line.slice(1)}
+                                      </pre>
+                                    </div>
+                                  );
+                                }
+                                if (item.type === "header") {
+                                  return (
+                                    <div class="px-4 py-0.5 text-gray-500 bg-[#0E121B] text-[11px]">
+                                      {item.line}
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div class="px-3 py-0.5 text-gray-300 hover:bg-[#111522] flex items-start">
+                                    <span class="w-8 text-right text-gray-600 select-none mr-2 text-[10.5px]">
+                                      {item.oldLineNo}
+                                    </span>
+                                    <span class="w-8 text-right text-gray-600 select-none mr-3 text-[10.5px]">
+                                      {item.newLineNo}
+                                    </span>
+                                    <span class="select-none mr-2 opacity-20">
+                                      {" "}
+                                    </span>
+                                    <pre class="flex-1 whitespace-pre-wrap font-mono break-all">
+                                      {item.line}
+                                    </pre>
+                                  </div>
+                                );
+                              }}
+                            </For>
+                          </Show>
+
+                          {/* Side-by-Side (Split) Layout */}
+                          <Show when={viewLayout() === "split"}>
+                            <div class="divide-y divide-gray-800/40">
+                              <For each={section.lines}>
+                                {(item) => {
+                                  if (item.type === "hunk") {
+                                    return (
+                                      <div
+                                        data-hunk={item.id}
+                                        class="px-4 py-1.5 bg-[#161B2B] text-indigo-300 font-bold border-y border-indigo-500/20 text-[11px] select-none"
+                                      >
+                                        {item.line}
+                                      </div>
+                                    );
+                                  }
+                                  if (item.type === "header") {
+                                    return (
+                                      <div class="px-4 py-0.5 text-gray-500 bg-[#0E121B] text-[11px]">
+                                        {item.line}
+                                      </div>
+                                    );
+                                  }
+                                  return (
+                                    <div class="grid grid-cols-2 divide-x divide-gray-800 text-[11.5px]">
+                                      {/* Left Column: Old Version */}
+                                      <div
+                                        class={`px-3 py-0.5 flex items-start ${
+                                          item.type === "deletion"
+                                            ? "bg-rose-500/15 text-rose-300"
+                                            : item.type === "addition"
+                                              ? "bg-transparent text-transparent"
+                                              : "text-gray-300"
+                                        }`}
+                                      >
+                                        <span class="w-7 text-right text-gray-600 select-none mr-2 text-[10px]">
+                                          {item.oldLineNo || ""}
+                                        </span>
+                                        <span class="mr-2 select-none">
+                                          {item.type === "deletion" ? "-" : " "}
+                                        </span>
+                                        <pre class="flex-1 whitespace-pre-wrap font-mono break-all">
+                                          {item.type === "deletion"
+                                            ? item.line.slice(1)
+                                            : item.type === "addition"
+                                              ? ""
+                                              : item.line}
+                                        </pre>
+                                      </div>
+
+                                      {/* Right Column: New Version */}
+                                      <div
+                                        class={`px-3 py-0.5 flex items-start ${
+                                          item.type === "addition"
+                                            ? "bg-emerald-500/15 text-emerald-200"
+                                            : item.type === "deletion"
+                                              ? "bg-transparent text-transparent"
+                                              : "text-gray-300"
+                                        }`}
+                                      >
+                                        <span class="w-7 text-right text-gray-600 select-none mr-2 text-[10px]">
+                                          {item.newLineNo || ""}
+                                        </span>
+                                        <span class="mr-2 select-none">
+                                          {item.type === "addition" ? "+" : " "}
+                                        </span>
+                                        <pre class="flex-1 whitespace-pre-wrap font-mono break-all">
+                                          {item.type === "addition"
+                                            ? item.line.slice(1)
+                                            : item.type === "deletion"
+                                              ? ""
+                                              : item.line}
+                                        </pre>
+                                      </div>
+                                    </div>
+                                  );
+                                }}
+                              </For>
                             </div>
-                          );
-                        }}
-                      </For>
-                    </div>
-                  </Show>
-                </div>
+                          </Show>
+                        </Show>
+                      </div>
+                    );
+                  }}
+                </For>
               </Show>
             </Show>
           </div>
