@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"onogitree/backend/batch"
@@ -63,8 +65,39 @@ func (a *App) GetActiveWorkspace() (*db.WorkspaceRecord, error) {
 	if a.store == nil {
 		return &db.WorkspaceRecord{ID: "default", Name: "Default Workspace", IsActive: true}, nil
 	}
-	return a.store.GetActiveWorkspace()
+	ws, err := a.store.GetActiveWorkspace()
+	if err != nil {
+		return nil, err
+	}
+
+	// Always ensure current working directory is present if it is a Git repo
+	if cwd, err := os.Getwd(); err == nil {
+		if _, err := os.Stat(filepath.Join(cwd, ".git")); err == nil {
+			cleanCwd := filepath.Clean(cwd)
+			exists := false
+			for _, r := range ws.Repos {
+				if r.Path == cleanCwd {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				record := db.RepositoryRecord{
+					ID:        cleanCwd,
+					Path:      cleanCwd,
+					Name:      filepath.Base(cleanCwd),
+					IsPinned:  false,
+					AutoFetch: true,
+				}
+				_ = a.store.AddRepository(ws.ID, &record)
+				ws.Repos = append(ws.Repos, record)
+			}
+		}
+	}
+
+	return ws, nil
 }
+
 
 // ScanWorkspaceDirectory searches a directory for nested Git repositories up to depth 3.
 func (a *App) ScanWorkspaceDirectory(dirPath string, maxDepth int) ([]workspace.DiscoveredRepo, error) {

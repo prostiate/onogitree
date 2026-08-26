@@ -8,10 +8,12 @@ import {
   FileX, 
   AlertCircle,
   Archive,
-  ChevronDown
+  ChevronDown,
+  RefreshCw
 } from 'lucide-solid';
 
 import { repoStore } from '../../store/repoStore';
+import { batchStore } from '../../store/batchStore';
 import { FileStatus } from '../../types/git';
 
 export const ChangesView: Component = () => {
@@ -109,8 +111,23 @@ export const ChangesView: Component = () => {
       >
         {(repo) => (
           <div class="flex flex-col flex-1 overflow-hidden p-3 gap-2">
+            {/* Sync Changes Banner if unpushed/unpulled commits */}
+            <Show when={repo().aheadCount > 0 || repo().behindCount > 0}>
+              <button
+                onClick={() => batchStore.setIsPushModalOpen(true)}
+                class="w-full flex items-center justify-center gap-2 py-1.5 px-3 bg-git-emerald/15 hover:bg-git-emerald/25 border border-git-emerald/40 text-git-emerald font-semibold rounded text-xs transition-colors cursor-pointer"
+                title="Synchronize and push outgoing commits"
+              >
+                <RefreshCw class="w-3.5 h-3.5" />
+                <span>
+                  Sync Changes {repo().aheadCount > 0 ? `${repo().aheadCount}↑` : ''} {repo().behindCount > 0 ? `${repo().behindCount}↓` : ''}
+                </span>
+              </button>
+            </Show>
+
             {/* Commit Message Box */}
             <div class="flex flex-col gap-1.5">
+
               <div class="relative">
                 <textarea
                   placeholder={`Message (Ctrl+Enter to commit on "${repo().currentBranch}")`}

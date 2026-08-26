@@ -1,4 +1,5 @@
-import { Component, createSignal, onMount, Show } from 'solid-js';
+import { Component, createSignal, onMount, onCleanup, Show } from 'solid-js';
+
 import { 
   GitBranch, 
   RefreshCw, 
@@ -50,6 +51,20 @@ export const App: Component = () => {
       }, 650);
     }
 
+    // Auto refresh on window focus
+    const handleFocus = () => {
+      void repoStore.refreshAll();
+    };
+    window.addEventListener('focus', handleFocus);
+
+
+    // Periodic live state polling (every 4 seconds)
+    const pollTimer = setInterval(() => {
+      if (document.visibilityState === 'visible' && !repoStore.isLoading()) {
+        void repoStore.refreshAll();
+      }
+    }, 4000);
+
     // Global keyboard shortcut: Ctrl+O to open repo
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
@@ -79,7 +94,17 @@ export const App: Component = () => {
 
     window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('mousemove', handleMouseMove);
+
+    onCleanup(() => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(pollTimer);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+    });
   });
+
+
 
   const selectedRepo = () => repoStore.selectedRepo();
 
