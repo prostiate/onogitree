@@ -5,6 +5,7 @@ import { FileStatus } from "../../../types/git";
 import { FileTreeNode } from "../../../utils/fileTree";
 import { GenericFileTree } from "../../common/GenericFileTree";
 import { StatusBadge } from "../../common/StatusBadge";
+import { FileIcon } from "../../common/FileIcon";
 
 interface UnstagedSectionProps {
   repoPath: string;
@@ -23,27 +24,18 @@ export const UnstagedSection: Component<UnstagedSectionProps> = (props) => {
   };
 
   return (
-    <div class="select-none">
-      <div class="flex items-center justify-between text-[11px] text-gray-400 font-semibold mb-1">
-        <span>CHANGES ({props.files.length})</span>
-        <Show when={props.files.length > 0}>
+    <Show when={props.files.length > 0}>
+      <div class="select-none">
+        <div class="flex items-center justify-between text-[11px] text-gray-400 font-semibold mb-1">
+          <span>CHANGES ({props.files.length})</span>
           <button
             onClick={() => repoStore.stageFiles(props.repoPath, [])}
             class="text-gray-500 hover:text-gray-300 text-[10px] font-mono cursor-pointer"
           >
             Stage All
           </button>
-        </Show>
-      </div>
+        </div>
 
-      <Show
-        when={props.files.length > 0}
-        fallback={
-          <div class="text-[11px] text-gray-500 py-2 italic">
-            Working tree clean.
-          </div>
-        }
-      >
         <Show
           when={props.viewMode === "tree"}
           fallback={
@@ -69,6 +61,7 @@ export const UnstagedSection: Component<UnstagedSectionProps> = (props) => {
                     }`}
                   >
                     <div class="flex items-center gap-2 truncate">
+                      <FileIcon filePath={file.path} size={14} class="flex-shrink-0" />
                       <StatusBadge status={file.status} variant="compact" />
                       <span class={`truncate ${isSelected(file.path) ? "text-indigo-300 font-bold" : "text-gray-200"}`}>
                         {file.path}
@@ -120,6 +113,7 @@ export const UnstagedSection: Component<UnstagedSectionProps> = (props) => {
                   }`}
                 >
                   <div class="flex items-center gap-1.5 truncate">
+                    <FileIcon filePath={file.path} size={14} class="flex-shrink-0" />
                     <StatusBadge status={file.status} variant="compact" />
                     <span class={`truncate ${isSelected(file.path) ? "text-indigo-300 font-bold" : "text-gray-200"}`}>
                       {node.name}
@@ -145,7 +139,7 @@ export const UnstagedSection: Component<UnstagedSectionProps> = (props) => {
             />
           </div>
         </Show>
-      </Show>
-    </div>
+      </div>
+    </Show>
   );
 };

@@ -15,6 +15,7 @@ import { CommitSummary, CommitFileChange } from "../../../types/git";
 import { buildGenericTree, GenericTreeNode } from "../../../utils/fileTree";
 import { GenericFileTree } from "../../common/GenericFileTree";
 import { StatusBadge } from "../../common/StatusBadge";
+import { FileIcon } from "../../common/FileIcon";
 
 interface CommitDetailsPanelProps {
   commit: CommitSummary;
@@ -234,6 +235,7 @@ export const CommitDetailsPanel: Component<CommitDetailsPanelProps> = (props) =>
                             class="group px-3 py-2 hover:bg-[#151926] flex items-center justify-between gap-3 cursor-pointer transition-colors"
                           >
                             <div class="flex items-center gap-2.5 min-w-0">
+                              <FileIcon filePath={file.path} size={15} class="flex-shrink-0" />
                               <StatusBadge status={file.status} />
                               <span class="font-mono text-xs text-gray-200 truncate group-hover:text-indigo-300">
                                 {file.path}
@@ -277,6 +279,7 @@ export const CommitDetailsPanel: Component<CommitDetailsPanelProps> = (props) =>
                           style={{ "padding-left": `${depth * 14 + 26}px` }}
                         >
                           <div class="flex items-center gap-2 min-w-0">
+                            <FileIcon filePath={file.path} size={15} class="flex-shrink-0" />
                             <StatusBadge status={file.status} />
                             <span class="truncate text-gray-200 group-hover:text-indigo-300">
                               {node.name}

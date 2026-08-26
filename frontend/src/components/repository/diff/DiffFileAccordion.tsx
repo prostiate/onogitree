@@ -1,8 +1,9 @@
 import { Component, For, Show } from "solid-js";
-import { ChevronRight, ChevronDown, FileCode } from "lucide-solid";
+import { ChevronRight, ChevronDown } from "lucide-solid";
 import { ParsedLine } from "./DiffInlineRow";
 import { DiffInlineRow } from "./DiffInlineRow";
 import { DiffSplitRow } from "./DiffSplitRow";
+import { FileIcon } from "../../common/FileIcon";
 
 export interface FileDiffSection {
   id: string;
@@ -33,7 +34,7 @@ export const DiffFileAccordion: Component<DiffFileAccordionProps> = (props) => {
       {/* File Accordion Header */}
       <div
         onClick={props.onToggleCollapse}
-        class="px-4 py-2 bg-[#121622] hover:bg-[#161B2B] border-b border-gray-800/80 flex items-center justify-between gap-3 cursor-pointer select-none transition-colors"
+        class="px-4 py-2.5 bg-[#121622] hover:bg-[#161B2B] border-b border-gray-800/80 flex items-center justify-between gap-3 cursor-pointer select-none transition-colors"
       >
         <div class="flex items-center gap-2.5 min-w-0">
           <Show
@@ -42,7 +43,7 @@ export const DiffFileAccordion: Component<DiffFileAccordionProps> = (props) => {
           >
             <ChevronDown class="w-4 h-4 text-indigo-400" />
           </Show>
-          <FileCode class="w-4 h-4 text-indigo-400/80 flex-shrink-0" />
+          <FileIcon filePath={props.section.filePath} size={15} class="flex-shrink-0" />
           <span class="font-bold text-white text-xs font-mono truncate">
             {props.section.filePath}
           </span>
@@ -69,26 +70,28 @@ export const DiffFileAccordion: Component<DiffFileAccordionProps> = (props) => {
           fallback={
             <div class="divide-y divide-gray-800/40">
               <For each={props.section.lines}>
-                {(item) => <DiffSplitRow item={item} />}
+                {(item) => (
+                  <DiffSplitRow
+                    item={item}
+                    filePath={props.section.filePath}
+                  />
+                )}
               </For>
             </div>
           }
         >
-          <For each={props.section.lines}>
-            {(item) => {
-              let hunkNum = -1;
-              if (item.type === "hunk") {
-                hunkNum = hunks().findIndex((h) => h.id === item.id);
-              }
-              return (
+          <div class="divide-y divide-gray-800/40">
+            <For each={props.section.lines}>
+              {(item) => (
                 <DiffInlineRow
                   item={item}
-                  hunkNum={hunkNum}
+                  hunkNum={hunks().findIndex((h) => h.id === item.id)}
                   totalHunks={hunks().length}
+                  filePath={props.section.filePath}
                 />
-              );
-            }}
-          </For>
+              )}
+            </For>
+          </div>
         </Show>
       </Show>
     </div>

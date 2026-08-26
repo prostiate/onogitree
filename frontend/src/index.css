@@ -298,3 +298,109 @@ html.theme-light ::-webkit-scrollbar-thumb {
 html.theme-light ::-webkit-scrollbar-thumb:hover {
   background: #b8afa0;
 }
+
+/* ========================================================================= */
+/* VS Code Dark+ Syntax Theme (PrismJS)                                      */
+/* ========================================================================= */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #6a9955 !important;
+  font-style: italic;
+}
+
+.token.punctuation {
+  color: #d4d4d4 !important;
+}
+
+.token.keyword,
+.token.atrule {
+  color: #c586c0 !important;
+}
+
+.token.boolean,
+.token.number {
+  color: #b5cea8 !important;
+}
+
+.token.string,
+.token.char,
+.token.attr-value {
+  color: #ce9178 !important;
+}
+
+.token.function,
+.token.function-variable {
+  color: #dcdcaa !important;
+}
+
+.token.class-name,
+.token.builtin,
+.token.maybe-class-name {
+  color: #4ec9b0 !important;
+}
+
+.token.property,
+.token.constant,
+.token.symbol {
+  color: #9cdcfe !important;
+}
+
+.token.variable,
+.token.parameter {
+  color: #9cdcfe !important;
+}
+
+.token.operator,
+.token.entity,
+.token.url {
+  color: #d4d4d4 !important;
+}
+
+.token.tag,
+.token.tag .token.punctuation {
+  color: #569cd6 !important;
+}
+
+.token.tag .token.class-name {
+  color: #4ec9b0 !important;
+}
+
+.token.attr-name {
+  color: #9cdcfe !important;
+}
+
+.token.regex,
+.token.important {
+  color: #d16969 !important;
+}
+
+/* Light Theme Syntax Overrides */
+html.theme-light .token.comment {
+  color: #008000 !important;
+}
+html.theme-light .token.keyword {
+  color: #af00db !important;
+}
+html.theme-light .token.string {
+  color: #a31515 !important;
+}
+html.theme-light .token.function {
+  color: #795e26 !important;
+}
+html.theme-light .token.class-name {
+  color: #267f99 !important;
+}
+html.theme-light .token.number {
+  color: #098658 !important;
+}
+html.theme-light .token.variable,
+html.theme-light .token.property,
+html.theme-light .token.attr-name {
+  color: #001080 !important;
+}
+html.theme-light .token.tag {
+  color: #800000 !important;
+}
+

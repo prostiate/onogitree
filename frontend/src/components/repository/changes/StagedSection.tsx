@@ -5,6 +5,7 @@ import { FileStatus } from "../../../types/git";
 import { FileTreeNode } from "../../../utils/fileTree";
 import { GenericFileTree } from "../../common/GenericFileTree";
 import { StatusBadge } from "../../common/StatusBadge";
+import { FileIcon } from "../../common/FileIcon";
 
 interface StagedSectionProps {
   repoPath: string;
@@ -60,6 +61,7 @@ export const StagedSection: Component<StagedSectionProps> = (props) => {
                     }`}
                   >
                     <div class="flex items-center gap-2 truncate">
+                      <FileIcon filePath={file.path} size={14} class="flex-shrink-0" />
                       <StatusBadge status={file.status} variant="compact" />
                       <span class={`truncate ${isSelected(file.path) ? "text-indigo-300 font-bold" : "text-gray-200"}`}>
                         {file.path}
@@ -109,6 +111,7 @@ export const StagedSection: Component<StagedSectionProps> = (props) => {
                   }`}
                 >
                   <div class="flex items-center gap-1.5 truncate">
+                    <FileIcon filePath={file.path} size={14} class="flex-shrink-0" />
                     <StatusBadge status={file.status} variant="compact" />
                     <span class={`truncate ${isSelected(file.path) ? "text-indigo-300 font-bold" : "text-gray-200"}`}>
                       {node.name}

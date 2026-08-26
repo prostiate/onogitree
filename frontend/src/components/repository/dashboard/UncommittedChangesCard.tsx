@@ -16,6 +16,7 @@ import { RepoStatus, FileStatus } from "../../../types/git";
 import { buildGenericTree, GenericTreeNode } from "../../../utils/fileTree";
 import { GenericFileTree } from "../../common/GenericFileTree";
 import { StatusBadge } from "../../common/StatusBadge";
+import { FileIcon } from "../../common/FileIcon";
 
 interface UncommittedChangesCardProps {
   repo: RepoStatus;
@@ -209,7 +210,8 @@ export const UncommittedChangesCard: Component<UncommittedChangesCardProps> = (p
                           : "hover:bg-[#161B26]"
                       }`}
                     >
-                      <div class="flex items-center gap-3 min-w-0">
+                      <div class="flex items-center gap-2.5 min-w-0">
+                        <FileIcon filePath={file.path} size={15} class="flex-shrink-0" />
                         <StatusBadge status={file.status} />
                         <span class={`font-mono text-xs truncate transition-colors ${
                           isSelected(file.path, file.staged)
@@ -281,7 +283,8 @@ export const UncommittedChangesCard: Component<UncommittedChangesCardProps> = (p
                     }`}
                     style={{ "padding-left": `${depth * 14 + 26}px` }}
                   >
-                    <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <FileIcon filePath={file.path} size={15} class="flex-shrink-0" />
                       <StatusBadge status={file.status} />
                       <span class={`truncate ${
                         isSelected(file.path, file.staged)
