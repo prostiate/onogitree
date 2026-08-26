@@ -1,62 +1,37 @@
+import * as App from '../../wailsjs/go/main/App';
+import * as Runtime from '../../wailsjs/runtime/runtime';
 import { RepoStatus, BranchInfo, DiscoveredRepo, WorkspaceRecord, ResourceStats, BatchProgressEvent } from '../types/git';
-
-// Wails Window API Declaration
-interface WailsGoApp {
-  GetActiveWorkspace(): Promise<WorkspaceRecord>;
-  ScanWorkspaceDirectory(path: string, maxDepth: number): Promise<DiscoveredRepo[]>;
-  AddRepositoryToWorkspace(path: string): Promise<RepoStatus>;
-  RemoveRepository(repoId: string): Promise<void>;
-  TogglePinRepository(repoId: string, isPinned: boolean): Promise<void>;
-  ToggleAutoFetchRepository(repoId: string, enabled: boolean): Promise<void>;
-  GetRepoStatus(repoPath: string): Promise<RepoStatus>;
-  RefreshAllRepositories(): Promise<RepoStatus[]>;
-  ListBranches(repoPath: string): Promise<BranchInfo[]>;
-  CheckoutBranch(repoPath: string, branchName: string): Promise<void>;
-  CreateBranch(repoPath: string, branchName: string, startPoint: string, checkout: boolean): Promise<void>;
-  StageFiles(repoPath: string, files: string[]): Promise<void>;
-  UnstageFiles(repoPath: string, files: string[]): Promise<void>;
-  Commit(repoPath: string, message: string, amend: boolean): Promise<void>;
-  RunBatchPull(skipDirty: boolean): Promise<void>;
-  RunBatchFetch(): Promise<void>;
-  GetResourceStats(): Promise<ResourceStats>;
-  CheckCLIAuth(): Promise<Record<string, boolean>>;
-}
-
-interface WailsRuntime {
-  EventsOn(eventName: string, callback: (data: BatchProgressEvent) => void): () => void;
-  EventsEmit(eventName: string, ...args: unknown[]): void;
-}
-
-interface WailsWindow extends Window {
-  go?: {
-    main?: {
-      App?: WailsGoApp;
-    };
-  };
-  runtime?: WailsRuntime;
-}
-
-const wailsWin = (typeof window !== 'undefined' ? window : {}) as WailsWindow;
 
 export const WailsBridge = {
   isAvailable(): boolean {
-    return !!wailsWin.go?.main?.App;
+    return typeof window !== 'undefined' && typeof (window as any).go !== 'undefined';
   },
 
   async getActiveWorkspace(): Promise<WorkspaceRecord> {
-    if (!wailsWin.go?.main?.App) {
+    try {
+      const ws = await App.GetActiveWorkspace();
+      return ws as unknown as WorkspaceRecord;
+    } catch {
       return { id: 'default', name: 'Default Workspace', isActive: true, repos: [] };
     }
-    return wailsWin.go.main.App.GetActiveWorkspace();
   },
 
   async scanDirectory(path: string, maxDepth: number = 3): Promise<DiscoveredRepo[]> {
-    if (!wailsWin.go?.main?.App) return [];
-    return wailsWin.go.main.App.ScanWorkspaceDirectory(path, maxDepth);
+    try {
+      const repos = await App.ScanWorkspaceDirectory(path, maxDepth);
+      return repos as unknown as DiscoveredRepo[];
+    } catch (err) {
+      console.error('ScanDirectory error:', err);
+      return [];
+    }
   },
 
   async addRepository(path: string): Promise<RepoStatus> {
-    if (!wailsWin.go?.main?.App) {
+    try {
+      const status = await App.AddRepositoryToWorkspace(path);
+      return status as unknown as RepoStatus;
+    } catch (err) {
+      console.error('AddRepository error:', err);
       return {
         id: path,
         name: path.split('/').pop() || 'repo',
@@ -72,26 +47,38 @@ export const WailsBridge = {
         autoFetchEnabled: true,
       };
     }
-    return wailsWin.go.main.App.AddRepositoryToWorkspace(path);
   },
 
   async removeRepository(repoId: string): Promise<void> {
-    if (!wailsWin.go?.main?.App) return;
-    return wailsWin.go.main.App.RemoveRepository(repoId);
+    try {
+      await App.RemoveRepository(repoId);
+    } catch (err) {
+      console.error('RemoveRepository error:', err);
+    }
   },
 
   async togglePin(repoId: string, isPinned: boolean): Promise<void> {
-    if (!wailsWin.go?.main?.App) return;
-    return wailsWin.go.main.App.TogglePinRepository(repoId, isPinned);
+    try {
+      await App.TogglePinRepository(repoId, isPinned);
+    } catch (err) {
+      console.error('TogglePin error:', err);
+    }
   },
 
   async toggleAutoFetch(repoId: string, enabled: boolean): Promise<void> {
-    if (!wailsWin.go?.main?.App) return;
-    return wailsWin.go.main.App.ToggleAutoFetchRepository(repoId, enabled);
+    try {
+      await App.ToggleAutoFetchRepository(repoId, enabled);
+    } catch (err) {
+      console.error('ToggleAutoFetch error:', err);
+    }
   },
 
   async getRepoStatus(repoPath: string): Promise<RepoStatus> {
-    if (!wailsWin.go?.main?.App) {
+    try {
+      const status = await App.GetRepoStatus(repoPath);
+      return status as unknown as RepoStatus;
+    } catch (err) {
+      console.error('GetRepoStatus error:', err);
       return {
         id: repoPath,
         name: repoPath.split('/').pop() || 'repo',
@@ -107,56 +94,92 @@ export const WailsBridge = {
         autoFetchEnabled: true,
       };
     }
-    return wailsWin.go.main.App.GetRepoStatus(repoPath);
   },
 
   async refreshAll(): Promise<RepoStatus[]> {
-    if (!wailsWin.go?.main?.App) return [];
-    return wailsWin.go.main.App.RefreshAllRepositories();
+    try {
+      const list = await App.RefreshAllRepositories();
+      return list as unknown as RepoStatus[];
+    } catch (err) {
+      console.error('RefreshAll error:', err);
+      return [];
+    }
   },
 
   async listBranches(repoPath: string): Promise<BranchInfo[]> {
-    if (!wailsWin.go?.main?.App) return [];
-    return wailsWin.go.main.App.ListBranches(repoPath);
+    try {
+      const branches = await App.ListBranches(repoPath);
+      return branches as unknown as BranchInfo[];
+    } catch (err) {
+      console.error('ListBranches error:', err);
+      return [];
+    }
   },
 
   async checkoutBranch(repoPath: string, branchName: string): Promise<void> {
-    if (!wailsWin.go?.main?.App) return;
-    return wailsWin.go.main.App.CheckoutBranch(repoPath, branchName);
+    try {
+      await App.CheckoutBranch(repoPath, branchName);
+    } catch (err) {
+      console.error('CheckoutBranch error:', err);
+      throw err;
+    }
   },
 
   async createBranch(repoPath: string, branchName: string, startPoint: string = '', checkout: boolean = true): Promise<void> {
-    if (!wailsWin.go?.main?.App) return;
-    return wailsWin.go.main.App.CreateBranch(repoPath, branchName, startPoint, checkout);
+    try {
+      await App.CreateBranch(repoPath, branchName, startPoint, checkout);
+    } catch (err) {
+      console.error('CreateBranch error:', err);
+      throw err;
+    }
   },
 
   async stageFiles(repoPath: string, files: string[]): Promise<void> {
-    if (!wailsWin.go?.main?.App) return;
-    return wailsWin.go.main.App.StageFiles(repoPath, files);
+    try {
+      await App.StageFiles(repoPath, files);
+    } catch (err) {
+      console.error('StageFiles error:', err);
+    }
   },
 
   async unstageFiles(repoPath: string, files: string[]): Promise<void> {
-    if (!wailsWin.go?.main?.App) return;
-    return wailsWin.go.main.App.UnstageFiles(repoPath, files);
+    try {
+      await App.UnstageFiles(repoPath, files);
+    } catch (err) {
+      console.error('UnstageFiles error:', err);
+    }
   },
 
   async commit(repoPath: string, message: string, amend: boolean = false): Promise<void> {
-    if (!wailsWin.go?.main?.App) return;
-    return wailsWin.go.main.App.Commit(repoPath, message, amend);
+    try {
+      await App.Commit(repoPath, message, amend);
+    } catch (err) {
+      console.error('Commit error:', err);
+      throw err;
+    }
   },
 
   async runBatchPull(skipDirty: boolean): Promise<void> {
-    if (!wailsWin.go?.main?.App) return;
-    return wailsWin.go.main.App.RunBatchPull(skipDirty);
+    try {
+      await App.RunBatchPull(skipDirty);
+    } catch (err) {
+      console.error('RunBatchPull error:', err);
+    }
   },
 
   async runBatchFetch(): Promise<void> {
-    if (!wailsWin.go?.main?.App) return;
-    return wailsWin.go.main.App.RunBatchFetch();
+    try {
+      await App.RunBatchFetch();
+    } catch (err) {
+      console.error('RunBatchFetch error:', err);
+    }
   },
 
   async getResourceStats(): Promise<ResourceStats> {
-    if (!wailsWin.go?.main?.App) {
+    try {
+      const stats = await App.GetResourceStats();
+      return stats as unknown as ResourceStats;
+    } catch {
       return {
         allocRamMb: 42.5,
         totalAllocMb: 110.2,
@@ -166,18 +189,31 @@ export const WailsBridge = {
         timestamp: Date.now(),
       };
     }
-    return wailsWin.go.main.App.GetResourceStats();
   },
 
   async checkCLIAuth(): Promise<Record<string, boolean>> {
-    if (!wailsWin.go?.main?.App) {
+    try {
+      return await App.CheckCLIAuth();
+    } catch {
       return { gh: true, glab: true };
     }
-    return wailsWin.go.main.App.CheckCLIAuth();
   },
 
   onBatchProgress(callback: (event: BatchProgressEvent) => void): () => void {
-    if (!wailsWin.runtime?.EventsOn) return () => {};
-    return wailsWin.runtime.EventsOn('batch:progress', callback);
+    try {
+      if (typeof Runtime.EventsOn === 'function') {
+        Runtime.EventsOn('batch:progress', (data: any) => {
+          callback(data as BatchProgressEvent);
+        });
+        return () => {
+          if (typeof Runtime.EventsOff === 'function') {
+            Runtime.EventsOff('batch:progress');
+          }
+        };
+      }
+    } catch (err) {
+      console.error('EventsOn error:', err);
+    }
+    return () => {};
   },
 };

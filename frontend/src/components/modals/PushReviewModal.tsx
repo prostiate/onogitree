@@ -1,4 +1,4 @@
-import { Component, createSignal, For, Show } from 'solid-js';
+import { Component, createSignal, createEffect, For, Show } from 'solid-js';
 import { X, ArrowUpFromLine, GitBranch, Check, AlertCircle } from 'lucide-solid';
 import { repoStore } from '../../store/repoStore';
 import { batchStore } from '../../store/batchStore';
@@ -7,17 +7,15 @@ export const PushReviewModal: Component = () => {
   const aheadRepos = () => repoStore.repositories().filter((r) => r.aheadCount > 0);
   const [selectedToPush, setSelectedToPush] = createSignal<Set<string>>(new Set());
 
-  // Initialize selected when opened
-  const initSelection = () => {
-    const s = new Set<string>();
-    for (const r of aheadRepos()) {
-      s.add(r.id);
+  createEffect(() => {
+    if (batchStore.isPushModalOpen()) {
+      const s = new Set<string>();
+      for (const r of aheadRepos()) {
+        s.add(r.id);
+      }
+      setSelectedToPush(s);
     }
-    setSelectedToPush(s);
-  };
-
-  if (!batchStore.isPushModalOpen()) return null;
-  initSelection();
+  });
 
   const handleToggle = (id: string) => {
     const s = new Set(selectedToPush());
@@ -27,21 +25,23 @@ export const PushReviewModal: Component = () => {
   };
 
   return (
-    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none">
-      <div class="w-full max-w-lg bg-carbon-surface border border-carbon-border rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[80vh] text-xs">
-        {/* Header */}
-        <div class="px-4 py-3 bg-carbon-elevated border-b border-carbon-border flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <ArrowUpFromLine class="w-4 h-4 text-git-indigo" />
-            <span class="font-semibold text-gray-200 text-sm">Batch Push Review (Zero Blind Pushes)</span>
+    <Show when={batchStore.isPushModalOpen()}>
+      <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none">
+        <div class="w-full max-w-lg bg-carbon-surface border border-carbon-border rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[80vh] text-xs">
+          {/* Header */}
+          <div class="px-4 py-3 bg-carbon-elevated border-b border-carbon-border flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <ArrowUpFromLine class="w-4 h-4 text-git-indigo" />
+              <span class="font-semibold text-gray-200 text-sm">Batch Push Review (Zero Blind Pushes)</span>
+            </div>
+            <button
+              onClick={() => batchStore.setIsPushModalOpen(false)}
+              class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 cursor-pointer"
+            >
+              <X class="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={() => batchStore.setIsPushModalOpen(false)}
-            class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 cursor-pointer"
-          >
-            <X class="w-4 h-4" />
-          </button>
-        </div>
+
 
         {/* Content */}
         <div class="p-4 space-y-3 flex-1 overflow-y-auto">
@@ -128,5 +128,6 @@ export const PushReviewModal: Component = () => {
         </div>
       </div>
     </div>
+    </Show>
   );
 };

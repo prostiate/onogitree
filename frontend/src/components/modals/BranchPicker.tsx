@@ -1,4 +1,4 @@
-import { Component, createSignal, For, onMount, Show } from 'solid-js';
+import { Component, createSignal, createEffect, For, Show } from 'solid-js';
 import { 
   X, 
   GitBranch, 
@@ -25,22 +25,14 @@ export const BranchPicker: Component<BranchPickerProps> = (props) => {
   const [isCreating, setIsCreating] = createSignal<boolean>(false);
   const [isLoading, setIsLoading] = createSignal<boolean>(false);
 
-  const loadBranches = async () => {
-    if (!props.repo) return;
-    setIsLoading(true);
-    try {
-      const list = await WailsBridge.listBranches(props.repo.path);
-      setBranches(list);
-    } catch (err) {
-      console.error('Failed to list branches:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  onMount(() => {
-    if (props.isOpen) {
-      void loadBranches();
+  createEffect(() => {
+    const r = props.repo;
+    if (props.isOpen && r) {
+      setIsLoading(true);
+      void WailsBridge.listBranches(r.path)
+        .then((list) => setBranches(list))
+        .catch((err) => console.error('Failed to list branches:', err))
+        .finally(() => setIsLoading(false));
     }
   });
 
@@ -73,26 +65,26 @@ export const BranchPicker: Component<BranchPickerProps> = (props) => {
     }
   };
 
-  if (!props.isOpen || !props.repo) return null;
-
   return (
-    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none">
-      <div class="w-full max-w-md bg-carbon-surface border border-carbon-border rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[80vh] text-xs">
-        {/* Header */}
-        <div class="px-4 py-3 bg-carbon-elevated border-b border-carbon-border flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <GitBranch class="w-4 h-4 text-git-indigo" />
-            <span class="font-semibold text-gray-200 text-sm">
-              Switch Branch <span class="text-git-indigo font-mono">({props.repo.name})</span>
-            </span>
+    <Show when={props.isOpen && props.repo}>
+      <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none">
+        <div class="w-full max-w-md bg-carbon-surface border border-carbon-border rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[80vh] text-xs">
+          {/* Header */}
+          <div class="px-4 py-3 bg-carbon-elevated border-b border-carbon-border flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <GitBranch class="w-4 h-4 text-git-indigo" />
+              <span class="font-semibold text-gray-200 text-sm">
+                Switch Branch <span class="text-git-indigo font-mono">({props.repo?.name})</span>
+              </span>
+            </div>
+            <button
+              onClick={props.onClose}
+              class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 cursor-pointer"
+            >
+              <X class="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={props.onClose}
-            class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 cursor-pointer"
-          >
-            <X class="w-4 h-4" />
-          </button>
-        </div>
+
 
         {/* Search Bar */}
         <div class="p-3 border-b border-carbon-border bg-carbon-base">
@@ -196,5 +188,7 @@ export const BranchPicker: Component<BranchPickerProps> = (props) => {
         </div>
       </div>
     </div>
+  </Show>
   );
 };
+
