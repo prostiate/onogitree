@@ -23,7 +23,7 @@ interface CommitDetailsPanelProps {
 }
 
 export const CommitDetailsPanel: Component<CommitDetailsPanelProps> = (props) => {
-  const [expandedFolders, setExpandedFolders] = createSignal<Set<string>>(
+  const [collapsedFolders, setCollapsedFolders] = createSignal<Set<string>>(
     new Set<string>(),
   );
 
@@ -35,7 +35,7 @@ export const CommitDetailsPanel: Component<CommitDetailsPanelProps> = (props) =>
     buildGenericTree(detail()?.files || []),
   );
 
-  const getAllFolderIds = (nodes: GenericTreeNode<CommitFileChange>[]): string[] => {
+  const allFolderIds = createMemo(() => {
     const ids: string[] = [];
     const traverse = (list: GenericTreeNode<CommitFileChange>[]) => {
       for (const node of list) {
@@ -45,30 +45,22 @@ export const CommitDetailsPanel: Component<CommitDetailsPanelProps> = (props) =>
         }
       }
     };
-    traverse(nodes);
+    traverse(filesTree());
     return ids;
-  };
+  });
 
-  const isAllExpanded = () => {
-    const allIds = getAllFolderIds(filesTree());
-    if (allIds.length === 0) return false;
-    const current = expandedFolders();
-    return allIds.every((id) => current.has(id));
-  };
+  const isAllExpanded = () => collapsedFolders().size === 0;
 
   const toggleExpandAll = () => {
-    const allIds = getAllFolderIds(filesTree());
-    const current = expandedFolders();
-    const allExp = allIds.every((id) => current.has(id));
-    if (allExp) {
-      setExpandedFolders(new Set<string>());
+    if (isAllExpanded()) {
+      setCollapsedFolders(new Set(allFolderIds()));
     } else {
-      setExpandedFolders(new Set(allIds));
+      setCollapsedFolders(new Set<string>());
     }
   };
 
   const toggleFolder = (folderId: string) => {
-    setExpandedFolders((prev) => {
+    setCollapsedFolders((prev) => {
       const next = new Set(prev);
       if (next.has(folderId)) {
         next.delete(folderId);
@@ -79,9 +71,8 @@ export const CommitDetailsPanel: Component<CommitDetailsPanelProps> = (props) =>
     });
   };
 
-  const isFolderExpanded = (folderId: string, depth: number) =>
-    expandedFolders().has(folderId) ||
-    (expandedFolders().size === 0 && depth === 0);
+  const isFolderExpanded = (folderId: string) =>
+    !collapsedFolders().has(folderId);
 
   return (
     <div class="px-4 pb-4 pt-1 border-t border-gray-800/80 mt-1 space-y-3">

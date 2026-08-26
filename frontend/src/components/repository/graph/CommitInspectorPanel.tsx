@@ -22,7 +22,7 @@ interface CommitInspectorPanelProps {
 export const CommitInspectorPanel: Component<CommitInspectorPanelProps> = (
   props,
 ) => {
-  const [expandedFolders, setExpandedFolders] = createSignal<Set<string>>(
+  const [collapsedFolders, setCollapsedFolders] = createSignal<Set<string>>(
     new Set<string>(),
   );
 
@@ -45,24 +45,18 @@ export const CommitInspectorPanel: Component<CommitInspectorPanelProps> = (
     return ids;
   });
 
-  const isAllExpanded = () => {
-    const ids = allFolderIds();
-    if (ids.length === 0) return false;
-    const cur = expandedFolders();
-    return ids.every((id) => cur.has(id));
-  };
+  const isAllExpanded = () => collapsedFolders().size === 0;
 
   const toggleExpandAll = () => {
-    const ids = allFolderIds();
     if (isAllExpanded()) {
-      setExpandedFolders(new Set<string>());
+      setCollapsedFolders(new Set(allFolderIds()));
     } else {
-      setExpandedFolders(new Set<string>(ids));
+      setCollapsedFolders(new Set<string>());
     }
   };
 
   const toggleFolder = (folderId: string) => {
-    setExpandedFolders((prev) => {
+    setCollapsedFolders((prev) => {
       const next = new Set(prev);
       if (next.has(folderId)) next.delete(folderId);
       else next.add(folderId);
@@ -70,9 +64,8 @@ export const CommitInspectorPanel: Component<CommitInspectorPanelProps> = (
     });
   };
 
-  const isFolderExpanded = (folderId: string, depth: number) =>
-    expandedFolders().has(folderId) ||
-    (expandedFolders().size === 0 && depth === 0);
+  const isFolderExpanded = (folderId: string) =>
+    !collapsedFolders().has(folderId);
 
   return (
     <div class="mt-2.5 pt-2.5 border-t border-gray-200/80 dark:border-gray-800/80 space-y-3 select-none">

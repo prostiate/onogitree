@@ -2,12 +2,13 @@ import { Component, createSignal, createMemo, Show } from "solid-js";
 import {
   ChevronRight,
   ChevronDown,
+  ChevronsUpDown,
   Plus,
   Minus,
 } from "lucide-solid";
 import { repoStore } from "../../../store/repoStore";
 import { RepoStatus, FileStatus } from "../../../types/git";
-import { buildGenericTree } from "../../../utils/fileTree";
+import { buildGenericTree, GenericTreeNode } from "../../../utils/fileTree";
 import { GenericFileTree } from "../../common/GenericFileTree";
 import { FileTypeBadge } from "../../common/FileTypeBadge";
 import { StatusBadge } from "../../common/StatusBadge";
@@ -19,26 +20,53 @@ interface OutgoingGraphNodeProps {
 }
 
 export const OutgoingGraphNode: Component<OutgoingGraphNodeProps> = (props) => {
-  const [isExpanded, setIsExpanded] = createSignal(false);
-  const [expandedFolders, setExpandedFolders] = createSignal<Set<string>>(
+  // Expanded by default
+  const [isExpanded, setIsExpanded] = createSignal(true);
+  const [collapsedFolders, setCollapsedFolders] = createSignal<Set<string>>(
     new Set<string>(),
   );
 
   const files = () => props.repo.files || [];
   const outgoingFilesTree = createMemo(() => buildGenericTree(files()));
 
+  const allFolderIds = createMemo(() => {
+    const ids: string[] = [];
+    const traverse = (items: GenericTreeNode<FileStatus>[]) => {
+      for (const item of items) {
+        if (item.isFolder) {
+          ids.push(item.id);
+          traverse(item.children);
+        }
+      }
+    };
+    traverse(outgoingFilesTree());
+    return ids;
+  });
+
+  const isAllExpanded = () => collapsedFolders().size === 0;
+
+  const toggleExpandAll = () => {
+    if (isAllExpanded()) {
+      setCollapsedFolders(new Set(allFolderIds()));
+    } else {
+      setCollapsedFolders(new Set<string>());
+    }
+  };
+
   const toggleFolder = (folderId: string) => {
-    setExpandedFolders((prev) => {
+    setCollapsedFolders((prev) => {
       const next = new Set(prev);
-      if (next.has(folderId)) next.delete(folderId);
-      else next.add(folderId);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
       return next;
     });
   };
 
-  const isFolderExpanded = (folderId: string, depth: number) =>
-    expandedFolders().has(folderId) ||
-    (expandedFolders().size === 0 && depth === 0);
+  const isFolderExpanded = (folderId: string) =>
+    !collapsedFolders().has(folderId);
 
   return (
     <div
@@ -135,6 +163,29 @@ export const OutgoingGraphNode: Component<OutgoingGraphNodeProps> = (props) => {
                 WORKING TREE FILES ({files().length})
               </span>
               <div class="flex items-center gap-2">
+                {/* Expand / Collapse All Folders Button */}
+                <Show when={allFolderIds().length > 0}>
+                  <button
+                    onClick={toggleExpandAll}
+                    class="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 dark:bg-[#151926] dark:hover:bg-[#1E2436] border border-gray-200 dark:border-gray-700/60 rounded text-[10px] font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+                    title={
+                      isAllExpanded()
+                        ? "Collapse all folders"
+                        : "Expand all folders"
+                    }
+                  >
+                    <Show
+                      when={isAllExpanded()}
+                      fallback={
+                        <ChevronsUpDown class="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                      }
+                    >
+                      <ChevronsUpDown class="w-3 h-3 text-amber-600 dark:text-amber-400 rotate-90" />
+                    </Show>
+                    <span>{isAllExpanded() ? "Collapse All" : "Expand All"}</span>
+                  </button>
+                </Show>
+
                 <button
                   onClick={() => repoStore.stageFiles(props.repo.path, [])}
                   class="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 border border-emerald-300 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300 rounded font-semibold text-[10px] cursor-pointer transition-colors"
