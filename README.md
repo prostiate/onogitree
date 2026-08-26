@@ -82,3 +82,42 @@ All deep architectural and design documents are maintained in the [`docs/`](./do
 7. [**`docs/coding_standards_and_guidelines.md`**](./docs/coding_standards_and_guidelines.md)
    - SOLID + KISS architecture principles, `pnpm` package management, zero-`any` TypeScript rules, Prettier exclusions for `.md` files, and testing verification standards.
 
+---
+
+## ⚡ Quick Start & Developer Guide
+
+### 1. Prerequisites (Ubuntu Linux)
+OnoGitTree is a native desktop application powered by Go and WebKitGTK. Ensure the required Linux GTK/WebKit dev headers and tools are installed:
+
+```bash
+sudo apt-get update && sudo apt-get install -y pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+```
+
+### 2. Environment & PATH Setup
+If you are using `zsh` (`~/.zshrc`) or `bash` (`~/.bashrc`), make sure your Go binaries path is included:
+
+```bash
+# Add to your ~/.zshrc or ~/.bashrc:
+export PATH="$PATH:$(go env GOPATH)/bin"
+```
+
+*(Note: The provided `Makefile` automatically detects and injects `$(go env GOPATH)/bin` so commands work seamlessly even if your shell PATH hasn't been updated yet.)*
+
+### 3. Development & Build Commands
+
+Use the `Makefile` for streamlined development workflows:
+
+| Command | Action |
+| :--- | :--- |
+| **`make dev`** | Launch the application in **Live Development Mode** with instant Hot Module Reloading (HMR) for both SolidJS and Go changes. |
+| **`make build`** | Compile the frontend and produce the standalone production executable at `build/bin/onogitree`. |
+| **`make test`** | Run full automated test suites (Go backend tests with `-race` detector + frontend Vitest). |
+| **`make check`** | Run strict TypeScript type verification (`tsc --noEmit`) and `go vet`. |
+| **`make clean`** | Remove generated binaries and temporary build directories. |
+
+### 4. Running the Built Desktop Binary
+
+```bash
+./build/bin/onogitree
+```
+
