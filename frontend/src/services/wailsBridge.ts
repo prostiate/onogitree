@@ -10,6 +10,7 @@ import {
   CommitSummary,
   CommitDetail,
   GitCommandLog,
+  LogFileInfo,
 } from "../types/git";
 
 export const WailsBridge = {
@@ -345,6 +346,27 @@ export const WailsBridge = {
       }
     } catch (err) {
       console.error("ClearGitCommandLogs error:", err);
+    }
+  },
+
+  async getLogInfo(): Promise<LogFileInfo | null> {
+    try {
+      if (typeof (App as any).GetLogInfo === "function") {
+        return (await (App as any).GetLogInfo()) as LogFileInfo;
+      }
+    } catch (err) {
+      console.error("GetLogInfo error:", err);
+    }
+    return null;
+  },
+
+  async clearLogFile(): Promise<void> {
+    try {
+      if (typeof (App as any).ClearLogFile === "function") {
+        await (App as any).ClearLogFile();
+      }
+    } catch (err) {
+      console.error("ClearLogFile error:", err);
     }
   },
 

@@ -134,3 +134,9 @@ export interface GitCommandLog {
   error?: string;
 }
 
+export interface LogFileInfo {
+  logPath: string;
+  logDir: string;
+  logSize: number;
+}
+

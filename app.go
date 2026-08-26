@@ -313,6 +313,28 @@ func (a *App) ClearGitCommandLogs() error {
 	return nil
 }
 
+// LogFileInfo holds metadata about the persistent on-disk log file.
+type LogFileInfo struct {
+	LogPath string `json:"logPath"`
+	LogDir  string `json:"logDir"`
+	LogSize int64  `json:"logSize"`
+}
+
+// GetLogInfo returns the log file location and file size.
+func (a *App) GetLogInfo() (*LogFileInfo, error) {
+	logger := system.GetDefaultLogger()
+	return &LogFileInfo{
+		LogPath: logger.GetLogPath(),
+		LogDir:  logger.GetLogDir(),
+		LogSize: logger.GetLogSize(),
+	}, nil
+}
+
+// ClearLogFile truncates the persistent on-disk log file.
+func (a *App) ClearLogFile() error {
+	return system.GetDefaultLogger().Clear()
+}
+
 // RunBatchPull triggers parallel pull across all open repositories emitting real-time events.
 func (a *App) RunBatchPull(skipDirty bool) error {
 	statuses, err := a.RefreshAllRepositories()

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"onogitree/backend/system"
 )
 
 // GitCommandLog records executed Git CLI command metadata and outputs for developer debugging.
@@ -151,6 +153,15 @@ func (r *CommandRunner) execute(ctx context.Context, repoPath string, isBatch bo
 }
 
 func (r *CommandRunner) recordLog(entry GitCommandLog) {
+	// 1. Write to persistent disk log file
+	fileLogger := system.GetDefaultLogger()
+	if entry.Success {
+		fileLogger.Log("INFO", entry.RepoPath, fmt.Sprintf("%s (%dms)", entry.Command, entry.DurationMs))
+	} else {
+		fileLogger.Log("ERROR", entry.RepoPath, fmt.Sprintf("%s (%dms) -> %s", entry.Command, entry.DurationMs, entry.Error))
+	}
+
+	// 2. In-memory ring buffer for UI console
 	r.logsMu.Lock()
 	defer r.logsMu.Unlock()
 

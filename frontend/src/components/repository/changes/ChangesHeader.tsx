@@ -9,6 +9,7 @@ import {
   GitBranch,
   FolderGit2,
   FileCode2,
+  FileDiff,
   ChevronDown,
   ChevronRight,
 } from "lucide-solid";
@@ -136,6 +137,18 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
               </button>
             </Show>
 
+            {/* View All Changes in Diff Viewer (Working Tree) */}
+            <Show when={props.totalWorkingChanges > 0 && props.activeTab === "workingTree"}>
+              <button
+                onClick={() => repoStore.selectFileForDiff("__ALL__", false)}
+                class="p-1.5 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 hover:text-white rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                title="View All Working Tree Changes in Diff Viewer"
+              >
+                <FileDiff class="w-3.5 h-3.5 text-indigo-400" />
+                <span class="text-[10px] font-bold hidden sm:inline">All Diff</span>
+              </button>
+            </Show>
+
             {/* Stage / Unstage All (Only in working tree mode) */}
             <Show when={props.activeTab === "workingTree"}>
               <button
@@ -167,6 +180,19 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
 
               <Show when={showOptionsMenu()}>
                 <div class="absolute right-0 top-8 w-48 bg-carbon-surface border border-carbon-border rounded-xl shadow-2xl py-1 z-40 text-xs backdrop-blur-md">
+                  <Show when={props.totalWorkingChanges > 0}>
+                    <button
+                      onClick={() => {
+                        repoStore.selectFileForDiff("__ALL__", false);
+                        setShowOptionsMenu(false);
+                      }}
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center gap-2 text-indigo-300 hover:text-white cursor-pointer font-semibold"
+                    >
+                      <FileDiff class="w-3.5 h-3.5 text-indigo-400" />
+                      <span>View Entire Diff</span>
+                    </button>
+                    <div class="my-1 border-t border-carbon-border" />
+                  </Show>
                   <button
                     onClick={() => {
                       props.onViewModeChange("list");
