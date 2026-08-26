@@ -76,4 +76,5 @@ All deep architectural and design documents are maintained in the [`docs/`](./do
    - Comprehensive audit matrix of operational behaviors, edge cases, and confirmation items.
    - Workspace presets vs flat list, dirty repo pull policies, push safety guardrails, and authentication.
 
-
+6. [**`docs/design_system_and_ui_spec.md`**](./docs/design_system_and_ui_spec.md)
+   - Distinctive dark carbon design system, palette tokens, typography, and UI layout hierarchy adhering to the `frontend-design` craftsmanship guidelines.
