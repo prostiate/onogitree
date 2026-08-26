@@ -3,8 +3,13 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --app-font-family: 'Inter', sans-serif;
+  }
+
   body {
     @apply bg-carbon-base text-gray-100 antialiased overflow-hidden select-none;
+    font-family: var(--app-font-family);
   }
 
   /* HTML Form & Select Dark Styling */
@@ -13,17 +18,12 @@
     color: #E2E8F0 !important;
   }
 
-  /* Font Family Overrides */
-  html[data-font="JetBrains Mono"], html[data-font="JetBrains Mono"] * {
-    font-family: 'JetBrains Mono', monospace !important;
+  /* Custom Theme Overrides */
+  html.theme-custom, html.theme-custom body, html.theme-custom .bg-carbon-base {
+    background-color: var(--custom-bg, #0F1117) !important;
   }
-
-  html[data-font="Fira Code"], html[data-font="Fira Code"] * {
-    font-family: 'Fira Code', monospace !important;
-  }
-
-  html[data-font="Inter"], html[data-font="Inter"] * {
-    font-family: 'Inter', sans-serif !important;
+  html.theme-custom .bg-carbon-surface {
+    background-color: var(--custom-surface, #161922) !important;
   }
 
   /* OLED Black Theme */

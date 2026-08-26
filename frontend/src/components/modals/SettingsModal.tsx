@@ -7,7 +7,6 @@ import {
   Cpu, 
   Key, 
   HardDrive, 
-  FolderArchive, 
   Search, 
   Check, 
   ShieldCheck, 
@@ -18,11 +17,14 @@ import {
   Moon, 
   Monitor, 
   Sparkles, 
+  Paintbrush, 
+  Type, 
   Plus, 
-  Trash2 
+  Trash2, 
+  FolderArchive 
 } from 'lucide-solid';
 import { WailsBridge } from '../../services/wailsBridge';
-import { settingsStore, ThemeMode, AccentColor, FontFamily, FontSize } from '../../store/settingsStore';
+import { settingsStore, ThemeMode, AccentColor, FontFamily } from '../../store/settingsStore';
 import { ResourceStats } from '../../types/git';
 import { CustomSelect, SelectOption } from '../common/CustomSelect';
 
@@ -31,7 +33,7 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-type SettingsSection = 'general' | 'appearance' | 'concurrency' | 'integrations' | 'profiles' | 'diagnostics';
+type SettingsSection = 'general' | 'appearance' | 'concurrency' | 'integrations' | 'diagnostics';
 
 export const SettingsModal: Component<SettingsModalProps> = (props) => {
   const [activeSection, setActiveSection] = createSignal<SettingsSection>('general');
@@ -40,6 +42,12 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
   const [cliAuth, setCliAuth] = createSignal<{ gh: boolean; glab: boolean }>({ gh: false, glab: false });
   const [stats, setStats] = createSignal<ResourceStats | null>(null);
   const [savedToast, setSavedToast] = createSignal<boolean>(false);
+
+  // Modal Resizing State
+  const [modalWidth, setModalWidth] = createSignal<number>(800);
+  const [modalHeight, setModalHeight] = createSignal<number>(580);
+  const [isResizing, setIsResizing] = createSignal<boolean>(false);
+  let resizeStartPos = { x: 0, y: 0, width: 0, height: 0 };
 
   const settings = () => settingsStore.settings();
   const profiles = () => settingsStore.profiles();
@@ -53,7 +61,37 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
     } catch {
       // ignore
     }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizing()) {
+        const deltaX = e.clientX - resizeStartPos.x;
+        const deltaY = e.clientY - resizeStartPos.y;
+        const newW = Math.max(580, Math.min(1200, resizeStartPos.width + deltaX));
+        const newH = Math.max(420, Math.min(900, resizeStartPos.height + deltaY));
+        setModalWidth(newW);
+        setModalHeight(newH);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
   });
+
+  const handleResizeStart = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    resizeStartPos = {
+      x: e.clientX,
+      y: e.clientY,
+      width: modalWidth(),
+      height: modalHeight(),
+    };
+  };
 
   const autoFetchOptions: SelectOption[] = [
     { value: '5m', label: 'Every 5 minutes', description: 'Fast auto-discovery for active collaboration teams' },
@@ -68,6 +106,7 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
     { value: 'dark', label: 'Deep Carbon Dark', icon: Moon, desc: 'High-contrast #0F1117 dark palette' },
     { value: 'oled', label: 'OLED Pure Black', icon: Sparkles, desc: 'True #000000 black for contrast' },
     { value: 'light', label: 'Clean Light', icon: Sun, desc: 'Crisp slate workspace for daylight' },
+    { value: 'custom', label: 'Custom Palette', icon: Paintbrush, desc: 'Manually customize background & surface' },
   ];
 
   const accentOptions: { value: AccentColor; label: string; colorClass: string }[] = [
@@ -82,19 +121,17 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
     { value: 'Inter', label: 'Inter (UI Sans)', preview: 'Aa Bb Gg 123' },
     { value: 'JetBrains Mono', label: 'JetBrains Mono', preview: 'fn main() => 123' },
     { value: 'Fira Code', label: 'Fira Code', preview: '0xDEADBEEF !== null' },
+    { value: 'Ubuntu Mono', label: 'Ubuntu Mono', preview: 'git log --oneline' },
+    { value: 'Cascadia Code', label: 'Cascadia Code', preview: 'const v = [1, 2, 3]' },
+    { value: 'Hack', label: 'Hack Mono', preview: 'struct Node { id: u64 }' },
     { value: 'system-ui', label: 'System UI Default', preview: 'Ubuntu Roboto Sans' },
-  ];
-
-  const fontSizeOptions: { value: FontSize; label: string; desc: string }[] = [
-    { value: 'sm', label: 'Compact', desc: 'Dense 11px information density' },
-    { value: 'md', label: 'Standard (Recommended)', desc: 'Balanced 12px readability' },
-    { value: 'lg', label: 'Comfortable', desc: 'Generous 13px spacing' },
+    { value: 'custom', label: 'Custom Installed Font...', preview: 'Specify system font family' },
   ];
 
   const handleSaveProfile = () => {
     const name = newProfileName().trim();
     if (!name) return;
-    settingsStore.saveProfile(name);
+    settingsStore.saveAppearanceProfile(name);
     setNewProfileName('');
     triggerToast();
   };
@@ -109,21 +146,36 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
     { id: 'appearance', label: 'Appearance & Themes', icon: Palette },
     { id: 'concurrency', label: 'Batch & Concurrency', icon: Cpu },
     { id: 'integrations', label: 'CLI & Auth', icon: Key },
-    { id: 'profiles', label: 'Saved Profiles', icon: FolderArchive },
     { id: 'diagnostics', label: 'Diagnostics', icon: HardDrive },
   ];
+
+  const filteredSections = () => {
+    const q = searchQuery().toLowerCase().trim();
+    if (!q) return sectionsList;
+    return sectionsList.filter((s) => 
+      s.label.toLowerCase().includes(q) || 
+      (s.id === 'appearance' && (q.includes('theme') || q.includes('color') || q.includes('font') || q.includes('profile') || q.includes('density'))) ||
+      (s.id === 'general' && (q.includes('fetch') || q.includes('git') || q.includes('interval')))
+    );
+  };
 
   return (
     <Show when={props.isOpen}>
       <div class="fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
-        <div class="w-full max-w-3xl bg-carbon-surface border border-carbon-border rounded-xl shadow-2xl overflow-hidden flex flex-col h-[78vh] text-xs">
+        <div 
+          style={{ 
+            width: `${modalWidth()}px`, 
+            height: `${modalHeight()}px` 
+          }}
+          class="bg-carbon-surface border border-carbon-border rounded-xl shadow-2xl overflow-hidden flex flex-col relative text-xs transition-shadow"
+        >
           {/* Header */}
-          <div class="px-4 py-3 bg-carbon-elevated border-b border-carbon-border flex items-center justify-between">
+          <div class="px-4 py-3 bg-carbon-elevated border-b border-carbon-border flex items-center justify-between flex-shrink-0">
             <div class="flex items-center gap-2">
               <Settings class="w-4 h-4 text-git-indigo" />
               <span class="font-semibold text-gray-200 text-sm">Settings & Preferences</span>
               <span class="text-[11px] px-2 py-0.5 bg-carbon-base border border-carbon-border rounded text-gray-400 font-mono">
-                {settings().activeProfile}
+                {settings().activeAppearanceProfile}
               </span>
             </div>
             <button
@@ -154,7 +206,7 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
 
               {/* Category List */}
               <div class="p-2 space-y-1 overflow-y-auto flex-1">
-                <For each={sectionsList}>
+                <For each={filteredSections()}>
                   {(sec) => {
                     const Icon = sec.icon;
                     const isActive = () => activeSection() === sec.id;
@@ -177,8 +229,10 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
 
               {/* Profile Pill bottom */}
               <div class="p-2.5 border-t border-carbon-border bg-carbon-surface/60 text-[11px] text-gray-400 flex items-center justify-between">
-                <span>Profile:</span>
-                <span class="font-semibold text-gray-300 font-mono truncate max-w-[110px]">{settings().activeProfile}</span>
+                <span>Theme:</span>
+                <span class="font-semibold text-gray-300 font-mono truncate max-w-[110px]">
+                  {settings().activeAppearanceProfile}
+                </span>
               </div>
             </div>
 
@@ -241,14 +295,14 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
               <Show when={activeSection() === 'appearance'}>
                 <div class="space-y-6">
                   <div>
-                    <h3 class="text-sm font-bold text-gray-100 mb-1">Appearance & Typography</h3>
-                    <p class="text-[11.5px] text-gray-400">Personalize color theme, accent hues, and typography family.</p>
+                    <h3 class="text-sm font-bold text-gray-100 mb-1">Appearance, Colors & Profiles</h3>
+                    <p class="text-[11.5px] text-gray-400">Customize themes, custom palette colors, system fonts, and saved profiles.</p>
                   </div>
 
                   {/* Theme Mode Grid */}
                   <div class="space-y-2">
                     <label class="block text-gray-200 font-medium">Color Theme</label>
-                    <div class="grid grid-cols-2 gap-2.5">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                       <For each={themeOptions}>
                         {(t) => {
                           const Icon = t.icon;
@@ -257,23 +311,25 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
                             <button
                               type="button"
                               onClick={() => settingsStore.updateSetting('themeMode', t.value)}
-                              class={`p-3 rounded-lg border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                              class={`p-3 rounded-lg border text-left flex flex-col justify-between transition-all cursor-pointer ${
                                 isSelected()
                                   ? 'border-git-indigo bg-git-indigo/10 shadow-md'
                                   : 'border-carbon-border bg-carbon-base hover:bg-carbon-hover'
                               }`}
                             >
-                              <div class={`p-1.5 rounded ${isSelected() ? 'bg-git-indigo text-white' : 'bg-carbon-elevated text-gray-400'}`}>
-                                <Icon class="w-4 h-4" />
+                              <div class="flex items-center justify-between mb-2">
+                                <div class={`p-1.5 rounded ${isSelected() ? 'bg-git-indigo text-white' : 'bg-carbon-elevated text-gray-400'}`}>
+                                  <Icon class="w-4 h-4" />
+                                </div>
+                                <Show when={isSelected()}>
+                                  <Check class="w-3.5 h-3.5 text-git-indigo stroke-[3]" />
+                                </Show>
                               </div>
                               <div>
-                                <div class="font-semibold text-gray-200 text-xs flex items-center gap-1.5">
-                                  <span>{t.label}</span>
-                                  <Show when={isSelected()}>
-                                    <Check class="w-3 h-3 text-git-indigo stroke-[3]" />
-                                  </Show>
+                                <div class="font-semibold text-gray-200 text-xs">
+                                  {t.label}
                                 </div>
-                                <p class="text-[10.5px] text-gray-400 mt-0.5">{t.desc}</p>
+                                <p class="text-[10.5px] text-gray-400 mt-0.5 leading-tight">{t.desc}</p>
                               </div>
                             </button>
                           );
@@ -282,10 +338,58 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
                     </div>
                   </div>
 
+                  {/* Custom Manual Color Pickers (Visible when custom theme is active) */}
+                  <Show when={settings().themeMode === 'custom'}>
+                    <div class="p-4 bg-carbon-base border border-git-indigo/40 rounded-lg space-y-3 animate-in fade-in duration-150">
+                      <span class="font-semibold text-gray-200 flex items-center gap-1.5">
+                        <Paintbrush class="w-4 h-4 text-git-indigo" />
+                        <span>Manual Color Customization</span>
+                      </span>
+
+                      <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                          <label class="block text-gray-400 text-[11px]">Background Color</label>
+                          <div class="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={settings().customBgHex || '#0F1117'}
+                              onInput={(e) => settingsStore.updateSetting('customBgHex', e.currentTarget.value)}
+                              class="w-8 h-8 rounded border border-carbon-border cursor-pointer bg-transparent"
+                            />
+                            <input
+                              type="text"
+                              value={settings().customBgHex || '#0F1117'}
+                              onInput={(e) => settingsStore.updateSetting('customBgHex', e.currentTarget.value)}
+                              class="flex-1 px-2.5 py-1 bg-carbon-elevated border border-carbon-border rounded text-gray-200 font-mono text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        <div class="space-y-1.5">
+                          <label class="block text-gray-400 text-[11px]">Surface & Card Color</label>
+                          <div class="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={settings().customSurfaceHex || '#161922'}
+                              onInput={(e) => settingsStore.updateSetting('customSurfaceHex', e.currentTarget.value)}
+                              class="w-8 h-8 rounded border border-carbon-border cursor-pointer bg-transparent"
+                            />
+                            <input
+                              type="text"
+                              value={settings().customSurfaceHex || '#161922'}
+                              onInput={(e) => settingsStore.updateSetting('customSurfaceHex', e.currentTarget.value)}
+                              class="flex-1 px-2.5 py-1 bg-carbon-elevated border border-carbon-border rounded text-gray-200 font-mono text-xs"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Show>
+
                   {/* Accent Color Palette */}
                   <div class="space-y-2">
                     <label class="block text-gray-200 font-medium">Accent Color Tone</label>
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2.5 flex-wrap">
                       <For each={accentOptions}>
                         {(acc) => {
                           const isSelected = () => settings().accentColor === acc.value;
@@ -295,7 +399,7 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
                               onClick={() => settingsStore.updateSetting('accentColor', acc.value)}
                               class={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs cursor-pointer transition-all ${
                                 isSelected()
-                                  ? 'border-white/50 bg-carbon-elevated text-white font-bold'
+                                  ? 'border-white/50 bg-carbon-elevated text-white font-bold shadow'
                                   : 'border-carbon-border bg-carbon-base text-gray-400 hover:text-gray-200'
                               }`}
                             >
@@ -308,9 +412,12 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
                     </div>
                   </div>
 
-                  {/* Typography Font Family */}
+                  {/* Typography & System Font Family */}
                   <div class="space-y-2">
-                    <label class="block text-gray-200 font-medium">UI & Code Font Family</label>
+                    <label class="block text-gray-200 font-medium flex items-center justify-between">
+                      <span>UI & Code Font Family</span>
+                      <span class="text-[11px] text-gray-400 font-normal">Supports all installed system fonts</span>
+                    </label>
                     <div class="grid grid-cols-2 gap-2.5">
                       <For each={fontOptions}>
                         {(f) => {
@@ -326,7 +433,10 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
                               }`}
                             >
                               <div class="flex items-center justify-between text-xs text-gray-200">
-                                <span>{f.label}</span>
+                                <span class="flex items-center gap-1.5">
+                                  <Type class="w-3.5 h-3.5 text-git-indigo" />
+                                  <span>{f.label}</span>
+                                </span>
                                 <Show when={isSelected()}>
                                   <Check class="w-3.5 h-3.5 text-git-indigo stroke-[3]" />
                                 </Show>
@@ -337,28 +447,112 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
                         }}
                       </For>
                     </div>
+
+                    {/* Custom Font Family Input */}
+                    <Show when={settings().fontFamily === 'custom'}>
+                      <div class="p-3 bg-carbon-base border border-carbon-border rounded-lg space-y-2 mt-2">
+                        <label class="block text-gray-300 text-xs font-medium">Installed System Font Name:</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Victor Mono, Monaspace Neon, DejaVu Sans, Comic Code"
+                          value={settings().customFontName || ''}
+                          onInput={(e) => settingsStore.updateSetting('customFontName', e.currentTarget.value)}
+                          class="w-full px-3 py-1.5 bg-carbon-elevated border border-carbon-border rounded text-gray-200 font-mono text-xs focus:outline-none focus:border-git-indigo"
+                        />
+                        <p class="text-[11px] text-gray-500">
+                          Type any font installed on your Linux system (/usr/share/fonts or ~/.local/share/fonts).
+                        </p>
+                      </div>
+                    </Show>
                   </div>
 
-                  {/* Information Density / Size */}
-                  <div class="space-y-2">
-                    <label class="block text-gray-200 font-medium">Layout Density</label>
+                  {/* Layout Density Precision Slider */}
+                  <div class="space-y-2 pt-2 border-t border-carbon-border">
+                    <div class="flex items-center justify-between text-gray-200 font-medium">
+                      <span>Layout Density & Font Size Scale</span>
+                      <span class="font-mono text-git-indigo font-bold text-xs">{settings().densityPx}px Base</span>
+                    </div>
                     <div class="flex items-center gap-3">
-                      <For each={fontSizeOptions}>
-                        {(fs) => {
-                          const isSelected = () => settings().fontSize === fs.value;
+                      <span class="text-[11px] text-gray-500 font-mono">10px</span>
+                      <input
+                        type="range"
+                        min="10"
+                        max="16"
+                        step="1"
+                        value={settings().densityPx}
+                        onInput={(e) => settingsStore.updateSetting('densityPx', parseInt(e.currentTarget.value, 10))}
+                        class="flex-1 accent-git-indigo cursor-pointer h-1.5 bg-carbon-base rounded-lg"
+                      />
+                      <span class="text-[11px] text-gray-500 font-mono">16px</span>
+                    </div>
+                    <p class="text-[11px] text-gray-500">
+                      Dynamically scales overall UI information density, typography size, and element spacing.
+                    </p>
+                  </div>
+
+                  {/* Saved Appearance Profiles Section */}
+                  <div class="space-y-3 pt-4 border-t border-carbon-border">
+                    <div class="flex items-center gap-2">
+                      <FolderArchive class="w-4 h-4 text-git-indigo" />
+                      <h4 class="text-xs font-bold text-gray-200 uppercase tracking-wider">Saved Appearance Profiles</h4>
+                    </div>
+
+                    {/* Create New Profile */}
+                    <div class="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Save current theme as profile (e.g. My Dark Theme)..."
+                        value={newProfileName()}
+                        onInput={(e) => setNewProfileName(e.currentTarget.value)}
+                        class="flex-1 px-3 py-1.5 bg-carbon-base border border-carbon-border rounded text-gray-200 text-xs focus:outline-none focus:border-git-indigo font-mono"
+                      />
+                      <button
+                        onClick={handleSaveProfile}
+                        disabled={!newProfileName().trim()}
+                        class="px-4 py-1.5 bg-git-indigo hover:bg-git-indigo/90 disabled:opacity-40 text-white font-medium rounded text-xs flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Plus class="w-3.5 h-3.5" />
+                        <span>Save Profile</span>
+                      </button>
+                    </div>
+
+                    {/* Profiles List */}
+                    <div class="border border-carbon-border rounded-lg divide-y divide-carbon-border bg-carbon-base overflow-hidden">
+                      <For each={Object.keys(profiles())}>
+                        {(pName) => {
+                          const isActive = () => settings().activeAppearanceProfile === pName;
                           return (
-                            <button
-                              type="button"
-                              onClick={() => settingsStore.updateSetting('fontSize', fs.value)}
-                              class={`flex-1 p-2.5 rounded-lg border text-left text-xs transition-all cursor-pointer ${
-                                isSelected()
-                                  ? 'border-git-indigo bg-git-indigo/10 font-bold'
-                                  : 'border-carbon-border bg-carbon-base hover:bg-carbon-hover'
-                              }`}
-                            >
-                              <span class="text-gray-200 block">{fs.label}</span>
-                              <span class="text-[10.5px] text-gray-400">{fs.desc}</span>
-                            </button>
+                            <div class="px-4 py-2.5 flex items-center justify-between hover:bg-carbon-hover transition-colors">
+                              <div class="flex items-center gap-2.5">
+                                <div class={`w-2.5 h-2.5 rounded-full ${isActive() ? 'bg-git-emerald' : 'bg-gray-600'}`} />
+                                <span class={`font-medium ${isActive() ? 'text-white font-bold' : 'text-gray-300'}`}>{pName}</span>
+                                <Show when={isActive()}>
+                                  <span class="px-2 py-0.5 bg-git-emerald/20 text-git-emerald text-[10px] font-bold rounded">
+                                    ACTIVE
+                                  </span>
+                                </Show>
+                              </div>
+
+                              <div class="flex items-center gap-2">
+                                <Show when={!isActive()}>
+                                  <button
+                                    onClick={() => settingsStore.loadAppearanceProfile(pName)}
+                                    class="px-2.5 py-1 bg-carbon-elevated hover:bg-carbon-border text-gray-200 rounded text-xs font-medium cursor-pointer"
+                                  >
+                                    Apply
+                                  </button>
+                                  <Show when={pName !== 'Default Dark'}>
+                                    <button
+                                      onClick={() => settingsStore.deleteAppearanceProfile(pName)}
+                                      class="p-1 hover:bg-git-rose/20 text-gray-400 hover:text-git-rose rounded cursor-pointer"
+                                      title="Delete profile"
+                                    >
+                                      <Trash2 class="w-3.5 h-3.5" />
+                                    </button>
+                                  </Show>
+                                </Show>
+                              </div>
+                            </div>
                           );
                         }}
                       </For>
@@ -457,77 +651,6 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
                 </div>
               </Show>
 
-              {/* SECTION: Profiles */}
-              <Show when={activeSection() === 'profiles'}>
-                <div class="space-y-6">
-                  <div>
-                    <h3 class="text-sm font-bold text-gray-100 mb-1">Configuration Profiles</h3>
-                    <p class="text-[11.5px] text-gray-400">Save and switch between workstation and project profiles.</p>
-                  </div>
-
-                  {/* Create New Profile */}
-                  <div class="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="New profile name (e.g. Work Polyrepo)..."
-                      value={newProfileName()}
-                      onInput={(e) => setNewProfileName(e.currentTarget.value)}
-                      class="flex-1 px-3 py-1.5 bg-carbon-base border border-carbon-border rounded text-gray-200 text-xs focus:outline-none focus:border-git-indigo font-mono"
-                    />
-                    <button
-                      onClick={handleSaveProfile}
-                      disabled={!newProfileName().trim()}
-                      class="px-4 py-1.5 bg-git-indigo hover:bg-git-indigo/90 disabled:opacity-40 text-white font-medium rounded text-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Plus class="w-3.5 h-3.5" />
-                      <span>Save Current Profile</span>
-                    </button>
-                  </div>
-
-                  {/* Profile List */}
-                  <div class="border border-carbon-border rounded-lg divide-y divide-carbon-border bg-carbon-base overflow-hidden">
-                    <For each={Object.keys(profiles())}>
-                      {(pName) => {
-                        const isActive = () => settings().activeProfile === pName;
-                        return (
-                          <div class="px-4 py-3 flex items-center justify-between hover:bg-carbon-hover transition-colors">
-                            <div class="flex items-center gap-2.5">
-                              <div class={`w-2.5 h-2.5 rounded-full ${isActive() ? 'bg-git-emerald' : 'bg-gray-600'}`} />
-                              <span class={`font-medium ${isActive() ? 'text-white font-bold' : 'text-gray-300'}`}>{pName}</span>
-                              <Show when={isActive()}>
-                                <span class="px-2 py-0.5 bg-git-emerald/20 text-git-emerald text-[10px] font-bold rounded">
-                                  ACTIVE
-                                </span>
-                              </Show>
-                            </div>
-
-                            <div class="flex items-center gap-2">
-                              <Show when={!isActive()}>
-                                <button
-                                  onClick={() => settingsStore.switchProfile(pName)}
-                                  class="px-2.5 py-1 bg-carbon-elevated hover:bg-carbon-border text-gray-200 rounded text-xs font-medium cursor-pointer"
-                                >
-                                  Switch
-                                </button>
-                                <Show when={pName !== 'Default Workstation'}>
-                                  <button
-                                    onClick={() => settingsStore.deleteProfile(pName)}
-                                    class="p-1 hover:bg-git-rose/20 text-gray-400 hover:text-git-rose rounded cursor-pointer"
-                                    title="Delete profile"
-                                  >
-                                    <Trash2 class="w-3.5 h-3.5" />
-                                  </button>
-                                </Show>
-                              </Show>
-                            </div>
-                          </div>
-                        );
-                      }}
-                    </For>
-                  </div>
-                </div>
-              </Show>
-
               {/* SECTION: Diagnostics */}
               <Show when={activeSection() === 'diagnostics'}>
                 <div class="space-y-6">
@@ -568,8 +691,8 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
             </div>
           </div>
 
-          {/* Modal Footer */}
-          <div class="px-4 py-3 bg-carbon-elevated border-t border-carbon-border flex items-center justify-between">
+          {/* Modal Footer with Resizer Handle */}
+          <div class="px-4 py-3 bg-carbon-elevated border-t border-carbon-border flex items-center justify-between flex-shrink-0">
             <Show when={savedToast()}>
               <span class="text-git-emerald font-medium flex items-center gap-1">
                 <Check class="w-3.5 h-3.5 stroke-[3]" />
@@ -584,6 +707,19 @@ export const SettingsModal: Component<SettingsModalProps> = (props) => {
                 Done
               </button>
             </div>
+          </div>
+
+          {/* Draggable Corner Resizer Handle */}
+          <div
+            onMouseDown={handleResizeStart}
+            class="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-50 flex items-end justify-end p-0.5 opacity-60 hover:opacity-100"
+            title="Drag to resize dialog"
+          >
+            <svg viewBox="0 0 6 6" class="w-2.5 h-2.5 text-gray-400 fill-current">
+              <circle cx="5" cy="5" r="0.75" />
+              <circle cx="5" cy="2.5" r="0.75" />
+              <circle cx="2.5" cy="5" r="0.75" />
+            </svg>
           </div>
         </div>
       </div>
