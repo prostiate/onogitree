@@ -97,6 +97,7 @@ export interface CommitSummary {
   relativeDate: string;
   subject: string;
   refs?: string;
+  parents?: string[];
 }
 
 export interface CommitFileChange {

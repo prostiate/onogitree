@@ -36,6 +36,7 @@ import {
 } from "../../types/git";
 import { ContextMenu, MenuItem } from "../common/ContextMenu";
 import { buildGenericTree, GenericTreeNode } from "../../utils/fileTree";
+import { GitGraphView } from "./GitGraphView";
 
 interface RepoDashboardProps {
   repo: RepoStatus;
@@ -64,6 +65,9 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
 
   const uncommittedChangesViewMode = () =>
     settingsStore.settings().uncommittedChangesViewMode || "tree";
+
+  const commitHistoryViewMode = () =>
+    settingsStore.settings().commitHistoryViewMode || "graph";
 
   const handleCommitClick = (commit: CommitSummary) => {
     void repoStore.toggleCommitExpanded(commit.hash);
@@ -158,6 +162,13 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
     return ids;
   };
 
+  const isAllUncommittedFoldersExpanded = () => {
+    const allIds = getAllFolderIds(uncommittedFilesTree());
+    if (allIds.length === 0) return false;
+    const current = uncommittedExpandedFolders();
+    return allIds.every((id) => current.has(id));
+  };
+
   const toggleExpandAllUncommittedFolders = () => {
     const allIds = getAllFolderIds(uncommittedFilesTree());
     const current = uncommittedExpandedFolders();
@@ -168,6 +179,14 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
     } else {
       setUncommittedExpandedFolders(new Set(allIds));
     }
+  };
+
+  const isAllCommitFoldersExpanded = (filesList: CommitFileChange[]) => {
+    const tree = buildGenericTree(filesList);
+    const allIds = getAllFolderIds(tree);
+    if (allIds.length === 0) return false;
+    const current = expandedFolders();
+    return allIds.every((id) => current.has(id));
   };
 
   const toggleExpandAllCommitFolders = (filesList: CommitFileChange[]) => {
@@ -627,11 +646,26 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
               <Show when={uncommittedChangesViewMode() === "tree"}>
                 <button
                   onClick={toggleExpandAllUncommittedFolders}
-                  class="px-2 py-1 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 rounded-lg text-[10.5px] font-medium text-gray-300 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
-                  title="Expand or collapse all folders"
+                  class="px-2.5 py-1 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 rounded-lg text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 cursor-pointer transition-colors"
+                  title={
+                    isAllUncommittedFoldersExpanded()
+                      ? "Collapse all uncommitted folders"
+                      : "Expand all uncommitted folders"
+                  }
                 >
-                  <ChevronsUpDown class="w-3 h-3 text-indigo-400" />
-                  <span class="hidden sm:inline">Expand/Collapse All</span>
+                  <Show
+                    when={isAllUncommittedFoldersExpanded()}
+                    fallback={
+                      <ChevronsUpDown class="w-3.5 h-3.5 text-indigo-400" />
+                    }
+                  >
+                    <ChevronsUpDown class="w-3.5 h-3.5 text-amber-400 rotate-90" />
+                  </Show>
+                  <span>
+                    {isAllUncommittedFoldersExpanded()
+                      ? "Collapse All"
+                      : "Expand All"}
+                  </span>
                 </button>
               </Show>
 
@@ -792,6 +826,40 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
           </div>
 
           <div class="flex items-center gap-2 flex-wrap">
+            {/* View Mode Switcher: Git Graph vs List */}
+            <div class="flex items-center bg-[#151926] border border-gray-700/60 rounded-lg p-0.5">
+              <button
+                onClick={() =>
+                  settingsStore.updateSetting("commitHistoryViewMode", "graph")
+                }
+                class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
+                  commitHistoryViewMode() === "graph"
+                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
+                    : "text-gray-400 hover:text-white"
+                }`}
+                title="View as Interactive Git Graph"
+              >
+                <GitBranch class="w-3 h-3" />
+                <span>Graph</span>
+              </button>
+              <button
+                onClick={() =>
+                  settingsStore.updateSetting("commitHistoryViewMode", "list")
+                }
+                class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
+                  commitHistoryViewMode() === "list"
+                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
+                    : "text-gray-400 hover:text-white"
+                }`}
+                title="View as Flat Cards List"
+              >
+                <List class="w-3 h-3" />
+                <span>List</span>
+              </button>
+            </div>
+
+            <div class="h-4 w-px bg-gray-700 mx-0.5" />
+
             {/* Expand All / Collapse All Commits */}
             <button
               onClick={toggleExpandAllCommits}
@@ -902,314 +970,370 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
             </div>
           }
         >
-          <div class="space-y-2.5">
-            <For each={filteredCommits()}>
-              {(commit) => {
-                const isExpanded = () =>
-                  expandedCommitHashes().has(commit.hash);
-                const detail = () => repoStore.getCommitDetail(commit.hash);
+          <Show
+            when={commitHistoryViewMode() === "graph"}
+            fallback={
+              <div class="space-y-2.5">
+                <For each={filteredCommits()}>
+                  {(commit) => {
+                    const isExpanded = () =>
+                      expandedCommitHashes().has(commit.hash);
+                    const detail = () => repoStore.getCommitDetail(commit.hash);
 
-                return (
-                  <div
-                    class={`border rounded-xl transition-all ${
-                      isExpanded()
-                        ? "border-indigo-500/60 bg-[#121624] shadow-lg"
-                        : "border-gray-800/80 bg-[#0D1017] hover:bg-[#141824]"
-                    }`}
-                  >
-                    {/* Commit Row Header */}
-                    <div
-                      onClick={() => handleCommitClick(commit)}
-                      onContextMenu={(e) => handleCommitContextMenu(e, commit)}
-                      class="p-3.5 flex items-start justify-between gap-4 cursor-pointer"
-                    >
-                      <div class="space-y-1.5 min-w-0 flex-1">
-                        <div class="flex items-center gap-2 flex-wrap">
-                          <span class="font-mono font-bold text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
-                            {commit.shortHash}
-                          </span>
-                          <span class="font-semibold text-xs text-white truncate">
-                            {commit.subject}
-                          </span>
-                        </div>
-
-                        <div class="flex items-center gap-3 text-[11px] text-gray-500 font-mono">
-                          <span class="text-gray-400 flex items-center gap-1">
-                            <User class="w-3 h-3" />
-                            <span>{commit.authorName}</span>
-                          </span>
-                          <span>•</span>
-                          <span class="flex items-center gap-1">
-                            <Calendar class="w-3 h-3" />
-                            <span>{commit.relativeDate}</span>
-                          </span>
-                        </div>
-                      </div>
-
-                      <div class="flex items-center gap-2 flex-shrink-0">
-                        <Show when={commit.refs}>
-                          <span class="px-2.5 py-0.5 bg-[#181D2B] text-gray-300 font-mono text-[10px] rounded-full border border-gray-700/60 shadow-sm">
-                            {commit.refs}
-                          </span>
-                        </Show>
-
-                        <button
-                          class={`p-1 rounded-lg text-gray-400 hover:text-white transition-transform ${
-                            isExpanded() ? "rotate-90 text-indigo-400" : ""
-                          }`}
+                    return (
+                      <div
+                        class={`border rounded-xl transition-all ${
+                          isExpanded()
+                            ? "border-indigo-500/60 bg-[#121624] shadow-lg"
+                            : "border-gray-800/80 bg-[#0D1017] hover:bg-[#141824]"
+                        }`}
+                      >
+                        {/* Commit Row Header */}
+                        <div
+                          onClick={() => handleCommitClick(commit)}
+                          onContextMenu={(e) =>
+                            handleCommitContextMenu(e, commit)
+                          }
+                          class="p-3.5 flex items-start justify-between gap-4 cursor-pointer"
                         >
-                          <ChevronRight class="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Expanded Commit Details & Modified Files Inspector */}
-                    <Show when={isExpanded()}>
-                      <div class="px-4 pb-4 pt-1 border-t border-gray-800/80 mt-1 space-y-3">
-                        <Show
-                          when={detail()}
-                          fallback={
-                            <div class="py-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
-                              <RefreshCw class="w-3.5 h-3.5 animate-spin text-indigo-400" />
-                              <span>
-                                Loading commit details and file list...
+                          <div class="space-y-1.5 min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                              <span class="font-mono font-bold text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                                {commit.shortHash}
+                              </span>
+                              <span class="font-semibold text-xs text-white truncate">
+                                {commit.subject}
                               </span>
                             </div>
-                          }
-                        >
-                          {(d) => {
-                            const commitFilesTree = createMemo(() =>
-                              buildGenericTree(d().files || []),
-                            );
 
-                            return (
-                              <div class="space-y-3 pt-2">
-                                {/* Full Commit Body / SHA Card */}
-                                <div class="bg-[#0A0C13] p-3.5 rounded-xl border border-gray-800 space-y-3 text-xs shadow-inner">
-                                  <div class="flex items-center justify-between text-gray-400 font-mono text-[11px] gap-2 flex-wrap">
-                                    <span class="truncate">
-                                      Commit SHA: {d().hash}
-                                    </span>
+                            <div class="flex items-center gap-3 text-[11px] text-gray-500 font-mono">
+                              <span class="text-gray-400 flex items-center gap-1">
+                                <User class="w-3 h-3" />
+                                <span>{commit.authorName}</span>
+                              </span>
+                              <span>•</span>
+                              <span class="flex items-center gap-1">
+                                <Calendar class="w-3 h-3" />
+                                <span>{commit.relativeDate}</span>
+                              </span>
+                            </div>
+                          </div>
 
-                                    <div class="flex items-center gap-2">
-                                      {/* View Entire Commit Diff Button */}
-                                      <button
-                                        onClick={() =>
-                                          repoStore.selectFileForDiff(
-                                            "__ALL__",
-                                            false,
-                                            d().hash,
-                                          )
-                                        }
-                                        class="px-2.5 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-indigo-300 font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
-                                        title="View full unified diff of all changed files in this commit"
-                                      >
-                                        <FileDiff class="w-3.5 h-3.5 text-indigo-400" />
-                                        <span>View Entire Commit Diff</span>
-                                      </button>
+                          <div class="flex items-center gap-2 flex-shrink-0">
+                            <Show when={commit.refs}>
+                              <span class="px-2.5 py-0.5 bg-[#181D2B] text-gray-300 font-mono text-[10px] rounded-full border border-gray-700/60 shadow-sm">
+                                {commit.refs}
+                              </span>
+                            </Show>
 
-                                      <button
-                                        onClick={() =>
-                                          copyText(d().hash, `sha-${d().hash}`)
-                                        }
-                                        class="px-2 py-1 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 text-gray-300 hover:text-white rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
-                                      >
-                                        <Show
-                                          when={
-                                            copiedHash() === `sha-${d().hash}`
-                                          }
-                                          fallback={<Copy class="w-3 h-3" />}
-                                        >
-                                          <Check class="w-3 h-3 text-emerald-400" />
-                                        </Show>
-                                        <span>
-                                          {copiedHash() === `sha-${d().hash}`
-                                            ? "Copied"
-                                            : "Copy SHA"}
-                                        </span>
-                                      </button>
-                                    </div>
-                                  </div>
+                            <button
+                              class={`p-1 rounded-lg text-gray-400 hover:text-white transition-transform ${
+                                isExpanded() ? "rotate-90 text-indigo-400" : ""
+                              }`}
+                            >
+                              <ChevronRight class="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
 
-                                  <Show when={d().body}>
-                                    <pre class="font-mono text-gray-300 whitespace-pre-wrap text-[11.5px] border-t border-gray-800/60 pt-2">
-                                      {d().body}
-                                    </pre>
-                                  </Show>
-
-                                  {/* Stats summary */}
-                                  <div class="flex items-center gap-3 text-[11px] font-mono font-bold pt-1">
-                                    <span class="text-gray-400">
-                                      {d().files.length} changed files
-                                    </span>
-                                    <span class="text-emerald-400">
-                                      +{d().totalAdditions} additions
-                                    </span>
-                                    <span class="text-rose-400">
-                                      -{d().totalDeletions} deletions
-                                    </span>
-                                  </div>
+                        {/* Expanded Commit Details & Modified Files Inspector */}
+                        <Show when={isExpanded()}>
+                          <div class="px-4 pb-4 pt-1 border-t border-gray-800/80 mt-1 space-y-3">
+                            <Show
+                              when={detail()}
+                              fallback={
+                                <div class="py-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                                  <RefreshCw class="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                                  <span>
+                                    Loading commit details and file list...
+                                  </span>
                                 </div>
+                              }
+                            >
+                              {(d) => {
+                                const commitFilesTree = createMemo(() =>
+                                  buildGenericTree(d().files || []),
+                                );
 
-                                {/* Changed Files in Commit List Header with View as Tree / List Switcher and Expand/Collapse */}
-                                <div class="space-y-1.5">
-                                  <div class="flex items-center justify-between gap-2 flex-wrap">
-                                    <span class="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider block">
-                                      Files Changed in This Commit (
-                                      {d().files.length})
-                                    </span>
+                                return (
+                                  <div class="space-y-3 pt-2">
+                                    {/* Full Commit Body / SHA Card */}
+                                    <div class="bg-[#0A0C13] p-3.5 rounded-xl border border-gray-800 space-y-3 text-xs shadow-inner">
+                                      <div class="flex items-center justify-between text-gray-400 font-mono text-[11px] gap-2 flex-wrap">
+                                        <span class="truncate">
+                                          Commit SHA: {d().hash}
+                                        </span>
 
-                                    <div class="flex items-center gap-2">
-                                      {/* Expand All / Collapse All button (only in Tree mode) */}
-                                      <Show
-                                        when={commitFilesViewMode() === "tree"}
-                                      >
-                                        <button
-                                          onClick={() =>
-                                            toggleExpandAllCommitFolders(
-                                              d().files,
-                                            )
-                                          }
-                                          class="px-2 py-0.5 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 rounded-lg text-[10px] font-medium text-gray-300 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
-                                          title="Expand or collapse all folders"
-                                        >
-                                          <ChevronsUpDown class="w-3 h-3 text-indigo-400" />
-                                          <span>Expand/Collapse All</span>
-                                        </button>
+                                        <div class="flex items-center gap-2">
+                                          {/* View Entire Commit Diff Button */}
+                                          <button
+                                            onClick={() =>
+                                              repoStore.selectFileForDiff(
+                                                "__ALL__",
+                                                false,
+                                                d().hash,
+                                              )
+                                            }
+                                            class="px-2.5 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-indigo-300 font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                                            title="View full unified diff of all changed files in this commit"
+                                          >
+                                            <FileDiff class="w-3.5 h-3.5 text-indigo-400" />
+                                            <span>View Entire Commit Diff</span>
+                                          </button>
+
+                                          <button
+                                            onClick={() =>
+                                              copyText(
+                                                d().hash,
+                                                `sha-${d().hash}`,
+                                              )
+                                            }
+                                            class="px-2 py-1 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 text-gray-300 hover:text-white rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
+                                          >
+                                            <Show
+                                              when={
+                                                copiedHash() ===
+                                                `sha-${d().hash}`
+                                              }
+                                              fallback={
+                                                <Copy class="w-3 h-3" />
+                                              }
+                                            >
+                                              <Check class="w-3 h-3 text-emerald-400" />
+                                            </Show>
+                                            <span>
+                                              {copiedHash() ===
+                                              `sha-${d().hash}`
+                                                ? "Copied"
+                                                : "Copy SHA"}
+                                            </span>
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      <Show when={d().body}>
+                                        <pre class="font-mono text-gray-300 whitespace-pre-wrap text-[11.5px] border-t border-gray-800/60 pt-2">
+                                          {d().body}
+                                        </pre>
                                       </Show>
 
-                                      {/* Persistent View as Tree / View as List Switcher */}
-                                      <div class="flex items-center bg-[#151926] border border-gray-700/60 rounded-lg p-0.5">
-                                        <button
-                                          onClick={() =>
-                                            settingsStore.updateSetting(
-                                              "commitFilesViewMode",
-                                              "tree",
-                                            )
-                                          }
-                                          class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
+                                      {/* Stats summary */}
+                                      <div class="flex items-center gap-3 text-[11px] font-mono font-bold pt-1">
+                                        <span class="text-gray-400">
+                                          {d().files.length} changed files
+                                        </span>
+                                        <span class="text-emerald-400">
+                                          +{d().totalAdditions} additions
+                                        </span>
+                                        <span class="text-rose-400">
+                                          -{d().totalDeletions} deletions
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Changed Files in Commit List Header with View as Tree / List Switcher and Expand/Collapse */}
+                                    <div class="space-y-1.5">
+                                      <div class="flex items-center justify-between gap-2 flex-wrap">
+                                        <span class="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider block">
+                                          Files Changed in This Commit (
+                                          {d().files.length})
+                                        </span>
+
+                                        <div class="flex items-center gap-2">
+                                          {/* Expand All / Collapse All button (only in Tree mode) */}
+                                          <Show
+                                            when={
+                                              commitFilesViewMode() === "tree"
+                                            }
+                                          >
+                                            <button
+                                              onClick={() =>
+                                                toggleExpandAllCommitFolders(
+                                                  d().files,
+                                                )
+                                              }
+                                              class="px-2.5 py-1 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 rounded-lg text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 cursor-pointer transition-colors"
+                                              title={
+                                                isAllCommitFoldersExpanded(
+                                                  d().files,
+                                                )
+                                                  ? "Collapse all folders"
+                                                  : "Expand all folders"
+                                              }
+                                            >
+                                              <Show
+                                                when={isAllCommitFoldersExpanded(
+                                                  d().files,
+                                                )}
+                                                fallback={
+                                                  <ChevronsUpDown class="w-3.5 h-3.5 text-indigo-400" />
+                                                }
+                                              >
+                                                <ChevronsUpDown class="w-3.5 h-3.5 text-amber-400 rotate-90" />
+                                              </Show>
+                                              <span>
+                                                {isAllCommitFoldersExpanded(
+                                                  d().files,
+                                                )
+                                                  ? "Collapse All"
+                                                  : "Expand All"}
+                                              </span>
+                                            </button>
+                                          </Show>
+
+                                          {/* Persistent View as Tree / View as List Switcher */}
+                                          <div class="flex items-center bg-[#151926] border border-gray-700/60 rounded-lg p-0.5">
+                                            <button
+                                              onClick={() =>
+                                                settingsStore.updateSetting(
+                                                  "commitFilesViewMode",
+                                                  "tree",
+                                                )
+                                              }
+                                              class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
+                                                commitFilesViewMode() === "tree"
+                                                  ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
+                                                  : "text-gray-400 hover:text-white"
+                                              }`}
+                                              title="View as Tree"
+                                            >
+                                              <FolderTree class="w-3 h-3" />
+                                              <span>Tree</span>
+                                            </button>
+                                            <button
+                                              onClick={() =>
+                                                settingsStore.updateSetting(
+                                                  "commitFilesViewMode",
+                                                  "list",
+                                                )
+                                              }
+                                              class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
+                                                commitFilesViewMode() === "list"
+                                                  ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
+                                                  : "text-gray-400 hover:text-white"
+                                              }`}
+                                              title="View as Flat List"
+                                            >
+                                              <List class="w-3 h-3" />
+                                              <span>List</span>
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div class="border border-gray-800 rounded-lg overflow-hidden bg-[#0A0C13]">
+                                        {/* 1. Tree View Mode */}
+                                        <Show
+                                          when={
                                             commitFilesViewMode() === "tree"
-                                              ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
-                                              : "text-gray-400 hover:text-white"
-                                          }`}
-                                          title="View as Tree"
-                                        >
-                                          <FolderTree class="w-3 h-3" />
-                                          <span>Tree</span>
-                                        </button>
-                                        <button
-                                          onClick={() =>
-                                            settingsStore.updateSetting(
-                                              "commitFilesViewMode",
-                                              "list",
-                                            )
                                           }
-                                          class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
-                                            commitFilesViewMode() === "list"
-                                              ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
-                                              : "text-gray-400 hover:text-white"
-                                          }`}
-                                          title="View as Flat List"
+                                          fallback={
+                                            /* 2. Flat List View Mode */
+                                            <div class="divide-y divide-gray-800/60">
+                                              <For each={d().files}>
+                                                {(file) => (
+                                                  <div
+                                                    onClick={() =>
+                                                      repoStore.selectFileForDiff(
+                                                        file.path,
+                                                        false,
+                                                        d().hash,
+                                                      )
+                                                    }
+                                                    class="group px-3 py-2 hover:bg-[#151926] flex items-center justify-between gap-3 cursor-pointer transition-colors"
+                                                  >
+                                                    <div class="flex items-center gap-2.5 min-w-0">
+                                                      {getFileChangeBadge(
+                                                        file.status,
+                                                      )}
+                                                      <span class="font-mono text-xs text-gray-200 truncate group-hover:text-indigo-300">
+                                                        {file.path}
+                                                      </span>
+                                                    </div>
+
+                                                    <div class="flex items-center gap-2 font-mono text-[11px] tabular-nums flex-shrink-0">
+                                                      <Show
+                                                        when={
+                                                          file.additions > 0
+                                                        }
+                                                      >
+                                                        <span class="text-emerald-400">
+                                                          +{file.additions}
+                                                        </span>
+                                                      </Show>
+                                                      <Show
+                                                        when={
+                                                          file.deletions > 0
+                                                        }
+                                                      >
+                                                        <span class="text-rose-400">
+                                                          -{file.deletions}
+                                                        </span>
+                                                      </Show>
+                                                      <ExternalLink class="w-3 h-3 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+                                                    </div>
+                                                  </div>
+                                                )}
+                                              </For>
+                                            </div>
+                                          }
                                         >
-                                          <List class="w-3 h-3" />
-                                          <span>List</span>
-                                        </button>
+                                          <div class="py-1">
+                                            <For each={commitFilesTree()}>
+                                              {(node) =>
+                                                renderCommitTreeNode(
+                                                  node,
+                                                  d().hash,
+                                                )
+                                              }
+                                            </For>
+                                          </div>
+                                        </Show>
                                       </div>
                                     </div>
                                   </div>
-
-                                  <div class="border border-gray-800 rounded-lg overflow-hidden bg-[#0A0C13]">
-                                    {/* 1. Tree View Mode */}
-                                    <Show
-                                      when={commitFilesViewMode() === "tree"}
-                                      fallback={
-                                        /* 2. Flat List View Mode */
-                                        <div class="divide-y divide-gray-800/60">
-                                          <For each={d().files}>
-                                            {(file) => (
-                                              <div
-                                                onClick={() =>
-                                                  repoStore.selectFileForDiff(
-                                                    file.path,
-                                                    false,
-                                                    d().hash,
-                                                  )
-                                                }
-                                                class="group px-3 py-2 hover:bg-[#151926] flex items-center justify-between gap-3 cursor-pointer transition-colors"
-                                              >
-                                                <div class="flex items-center gap-2.5 min-w-0">
-                                                  {getFileChangeBadge(
-                                                    file.status,
-                                                  )}
-                                                  <span class="font-mono text-xs text-gray-200 truncate group-hover:text-indigo-300">
-                                                    {file.path}
-                                                  </span>
-                                                </div>
-
-                                                <div class="flex items-center gap-2 font-mono text-[11px] tabular-nums flex-shrink-0">
-                                                  <Show
-                                                    when={file.additions > 0}
-                                                  >
-                                                    <span class="text-emerald-400">
-                                                      +{file.additions}
-                                                    </span>
-                                                  </Show>
-                                                  <Show
-                                                    when={file.deletions > 0}
-                                                  >
-                                                    <span class="text-rose-400">
-                                                      -{file.deletions}
-                                                    </span>
-                                                  </Show>
-                                                  <ExternalLink class="w-3 h-3 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-                                                </div>
-                                              </div>
-                                            )}
-                                          </For>
-                                        </div>
-                                      }
-                                    >
-                                      <div class="py-1">
-                                        <For each={commitFilesTree()}>
-                                          {(node) =>
-                                            renderCommitTreeNode(node, d().hash)
-                                          }
-                                        </For>
-                                      </div>
-                                    </Show>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          }}
+                                );
+                              }}
+                            </Show>
+                          </div>
                         </Show>
                       </div>
-                    </Show>
-                  </div>
-                );
-              }}
-            </For>
-
-            {/* Load More Commits & Load All Button Footer */}
-            <Show when={repoStore.commitLimit() < 10000}>
-              <div class="pt-2 flex items-center justify-center gap-3">
-                <button
-                  onClick={() => repoStore.loadMoreCommits(props.repo.path, 25)}
-                  class="px-4 py-2 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 rounded-xl text-xs font-semibold text-gray-200 hover:text-white flex items-center gap-2 cursor-pointer transition-colors shadow-sm"
-                >
-                  <History class="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Load More Commits (+25)</span>
-                </button>
-
-                <button
-                  onClick={() => repoStore.setCommitLimit(10000)}
-                  class="px-4 py-2 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/40 rounded-xl text-xs font-semibold text-indigo-300 hover:text-white flex items-center gap-2 cursor-pointer transition-colors shadow-sm"
-                >
-                  <span>Load All Commits on Branch</span>
-                </button>
+                    );
+                  }}
+                </For>
               </div>
-            </Show>
-          </div>
+            }
+          >
+            <div class="border border-gray-800/80 rounded-xl overflow-hidden bg-[#0D1017]">
+              <GitGraphView
+                repo={props.repo}
+                commits={filteredCommits()}
+                onCommitContextMenu={(e, commit) =>
+                  handleCommitContextMenu(e, commit)
+                }
+              />
+            </div>
+          </Show>
+
+          {/* Load More Commits & Load All Button Footer */}
+          <Show when={repoStore.commitLimit() < 10000}>
+            <div class="pt-2 flex items-center justify-center gap-3">
+              <button
+                onClick={() => repoStore.loadMoreCommits(props.repo.path, 25)}
+                class="px-4 py-2 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 rounded-xl text-xs font-semibold text-gray-200 hover:text-white flex items-center gap-2 cursor-pointer transition-colors shadow-sm"
+              >
+                <History class="w-3.5 h-3.5 text-indigo-400" />
+                <span>Load More Commits (+25)</span>
+              </button>
+
+              <button
+                onClick={() => repoStore.setCommitLimit(10000)}
+                class="px-4 py-2 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/40 rounded-xl text-xs font-semibold text-indigo-300 hover:text-white flex items-center gap-2 cursor-pointer transition-colors shadow-sm"
+              >
+                <span>Load All Commits on Branch</span>
+              </button>
+            </div>
+          </Show>
         </Show>
       </div>
 

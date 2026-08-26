@@ -34,6 +34,7 @@ export interface AppSettings extends AppearanceProfile {
   diffCollapseUnchanged: boolean;
   commitFilesViewMode: "tree" | "list";
   uncommittedChangesViewMode: "tree" | "list";
+  commitHistoryViewMode: "graph" | "list";
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -54,6 +55,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   diffCollapseUnchanged: true,
   commitFilesViewMode: "tree",
   uncommittedChangesViewMode: "tree",
+  commitHistoryViewMode: "graph",
 };
 
 const STORAGE_KEY = "onogitree_settings_v2";

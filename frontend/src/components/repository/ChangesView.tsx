@@ -23,6 +23,7 @@ import {
   List,
   FolderTree,
   MoreHorizontal,
+  ChevronsUpDown,
 } from "lucide-solid";
 
 import { repoStore } from "../../store/repoStore";
@@ -86,6 +87,43 @@ export const ChangesView: Component = () => {
 
   const stagedTree = createMemo(() => buildFileTree(stagedFiles()));
   const unstagedTree = createMemo(() => buildFileTree(unstagedFiles()));
+
+  const getAllTreeFolderIds = (nodes: FileTreeNode[]): string[] => {
+    const ids: string[] = [];
+    const traverse = (items: FileTreeNode[]) => {
+      for (const item of items) {
+        if (item.isFolder) {
+          ids.push(item.id);
+          traverse(item.children);
+        }
+      }
+    };
+    traverse(nodes);
+    return ids;
+  };
+
+  const isAllTreeFoldersCollapsed = () => {
+    const allIds = [
+      ...getAllTreeFolderIds(stagedTree()),
+      ...getAllTreeFolderIds(unstagedTree()),
+    ];
+    if (allIds.length === 0) return false;
+    const collapsed = collapsedFolders();
+    return allIds.every((id) => collapsed[id]);
+  };
+
+  const toggleExpandAllTreeFolders = () => {
+    const allIds = [
+      ...getAllTreeFolderIds(stagedTree()),
+      ...getAllTreeFolderIds(unstagedTree()),
+    ];
+    const isCollapsed = isAllTreeFoldersCollapsed();
+    const next: Record<string, boolean> = {};
+    for (const id of allIds) {
+      next[id] = !isCollapsed;
+    }
+    setCollapsedFolders(next);
+  };
 
   const toggleFolder = (folderId: string) => {
     setCollapsedFolders((prev) => ({
@@ -364,8 +402,30 @@ export const ChangesView: Component = () => {
                 </Show>
               </button>
 
+              <Show when={viewMode() === "tree"}>
+                <button
+                  onClick={toggleExpandAllTreeFolders}
+                  class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
+                  title={
+                    isAllTreeFoldersCollapsed()
+                      ? "Expand All Folders"
+                      : "Collapse All Folders"
+                  }
+                >
+                  <Show
+                    when={isAllTreeFoldersCollapsed()}
+                    fallback={
+                      <ChevronsUpDown class="w-3.5 h-3.5 text-amber-400 rotate-90" />
+                    }
+                  >
+                    <ChevronsUpDown class="w-3.5 h-3.5 text-indigo-400" />
+                  </Show>
+                </button>
+              </Show>
+
               <button
                 onClick={() => repoStore.stageFiles(repo().path, [])}
+
                 class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-emerald-400 transition-colors cursor-pointer"
                 title="Stage All Changes"
               >

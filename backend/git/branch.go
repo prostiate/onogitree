@@ -132,11 +132,10 @@ func (s *BranchService) GetRecentCommits(ctx context.Context, repoPath string, l
 	if limit <= 0 {
 		limit = 25
 	}
-	out, err := s.runner.Run(ctx, repoPath, "log", fmt.Sprintf("-n%d", limit), "--pretty=format:%H%x00%h%x00%an%x00%ae%x00%cr%x00%s%x00%D")
+	out, err := s.runner.Run(ctx, repoPath, "log", fmt.Sprintf("-n%d", limit), "--pretty=format:%H%x00%h%x00%an%x00%ae%x00%cr%x00%s%x00%D%x00%p")
 	if err != nil {
 		return []CommitSummary{}, nil
 	}
-
 
 	commits := make([]CommitSummary, 0)
 	lines := strings.Split(out, "\n")
@@ -147,6 +146,10 @@ func (s *BranchService) GetRecentCommits(ctx context.Context, repoPath string, l
 			if len(parts) >= 7 {
 				refs = parts[6]
 			}
+			var parents []string
+			if len(parts) >= 8 && strings.TrimSpace(parts[7]) != "" {
+				parents = strings.Fields(strings.TrimSpace(parts[7]))
+			}
 			commits = append(commits, CommitSummary{
 				Hash:         parts[0],
 				ShortHash:    parts[1],
@@ -155,6 +158,7 @@ func (s *BranchService) GetRecentCommits(ctx context.Context, repoPath string, l
 				RelativeDate: parts[4],
 				Subject:      parts[5],
 				Refs:         refs,
+				Parents:      parents,
 			})
 		}
 	}

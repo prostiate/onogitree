@@ -54,14 +54,15 @@ type BatchProgressEvent struct {
 
 // CommitSummary represents a lightweight commit item.
 type CommitSummary struct {
-	Hash        string `json:"hash"`
-	ShortHash   string `json:"shortHash"`
-	AuthorName  string `json:"authorName"`
-	AuthorEmail string `json:"authorEmail"`
-	Date        string `json:"date"`
-	RelativeDate string `json:"relativeDate"`
-	Subject     string `json:"subject"`
-	Refs        string `json:"refs,omitempty"`
+	Hash         string   `json:"hash"`
+	ShortHash    string   `json:"shortHash"`
+	AuthorName   string   `json:"authorName"`
+	AuthorEmail  string   `json:"authorEmail"`
+	Date         string   `json:"date"`
+	RelativeDate string   `json:"relativeDate"`
+	Subject      string   `json:"subject"`
+	Refs         string   `json:"refs,omitempty"`
+	Parents      []string `json:"parents"`
 }
 
 // CommitFileChange represents a file modified in a specific commit.

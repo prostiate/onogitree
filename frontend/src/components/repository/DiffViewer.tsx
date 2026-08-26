@@ -30,6 +30,7 @@ import {
   ChevronRight,
   FoldVertical,
   UnfoldVertical,
+  ChevronsUpDown,
 } from "lucide-solid";
 
 import { repoStore } from "../../store/repoStore";
@@ -250,7 +251,18 @@ export const DiffViewer: Component = () => {
   };
 
   const collapseAllFiles = () => {
-    setCollapsedFileIds(new Set(fileSections().map((f) => f.id)));
+    setCollapsedFileIds(new Set<string>(fileSections().map((f) => f.id)));
+  };
+
+  const isAllFilesExpanded = () =>
+    collapsedFileIds().size === 0 && fileSections().length > 0;
+
+  const toggleExpandAllFiles = () => {
+    if (isAllFilesExpanded()) {
+      collapseAllFiles();
+    } else {
+      expandAllFiles();
+    }
   };
 
   const scrollToNextHunk = () => {
@@ -332,24 +344,27 @@ export const DiffViewer: Component = () => {
             {/* Right side: Control Actions & Expand/Collapse All Buttons */}
             <div class="flex items-center gap-1.5 flex-shrink-0">
               {/* Expand All / Collapse All Files in Diff Accordion */}
-              <div class="flex items-center bg-[#181D2B] border border-gray-700/60 rounded-lg p-0.5">
-                <button
-                  onClick={expandAllFiles}
-                  class="px-2 py-1 hover:bg-[#22293D] text-gray-400 hover:text-white rounded text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
-                  title="Expand All Files"
+              <button
+                onClick={toggleExpandAllFiles}
+                class="px-2.5 py-1 bg-[#181D2B] hover:bg-[#22293D] border border-gray-700/60 rounded-lg text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 cursor-pointer transition-colors"
+                title={
+                  isAllFilesExpanded()
+                    ? "Collapse all files in diff"
+                    : "Expand all files in diff"
+                }
+              >
+                <Show
+                  when={isAllFilesExpanded()}
+                  fallback={
+                    <ChevronsUpDown class="w-3.5 h-3.5 text-indigo-400" />
+                  }
                 >
-                  <UnfoldVertical class="w-3.5 h-3.5 text-indigo-400" />
-                  <span class="hidden sm:inline">Expand All</span>
-                </button>
-                <button
-                  onClick={collapseAllFiles}
-                  class="px-2 py-1 hover:bg-[#22293D] text-gray-400 hover:text-white rounded text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
-                  title="Collapse All Files"
-                >
-                  <FoldVertical class="w-3.5 h-3.5 text-gray-400" />
-                  <span class="hidden sm:inline">Collapse All</span>
-                </button>
-              </div>
+                  <ChevronsUpDown class="w-3.5 h-3.5 text-amber-400 rotate-90" />
+                </Show>
+                <span>
+                  {isAllFilesExpanded() ? "Collapse All" : "Expand All"}
+                </span>
+              </button>
 
               {/* Previous / Next Hunk Navigation */}
               <div class="flex items-center bg-[#181D2B] border border-gray-700/60 rounded-lg p-0.5">
