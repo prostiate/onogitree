@@ -112,3 +112,58 @@ func (s *BranchService) DiscardFiles(ctx context.Context, repoPath string, files
 	return nil
 }
 
+// GetFileDiff returns unified diff output for a specified file.
+func (s *BranchService) GetFileDiff(ctx context.Context, repoPath string, filePath string, staged bool) (string, error) {
+	if staged {
+		out, err := s.runner.Run(ctx, repoPath, "diff", "--cached", "--", filePath)
+		return out, err
+	}
+	out, err := s.runner.Run(ctx, repoPath, "diff", "--", filePath)
+	if err == nil && len(strings.TrimSpace(out)) > 0 {
+		return out, nil
+	}
+	// For untracked files, show diff against /dev/null
+	out, _ = s.runner.Run(ctx, repoPath, "diff", "--no-index", "/dev/null", filePath)
+	return out, nil
+}
+
+// GetRecentCommits returns the most recent commits on HEAD.
+func (s *BranchService) GetRecentCommits(ctx context.Context, repoPath string, limit int) ([]CommitSummary, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	out, err := s.runner.Run(ctx, repoPath, "log", fmt.Sprintf("-n%d", limit), "--pretty=format:%H%x00%h%x00%an%x00%ae%x00%cr%x00%s%x00%D")
+	if err != nil {
+		return []CommitSummary{}, nil
+	}
+
+	commits := make([]CommitSummary, 0)
+	lines := strings.Split(out, "\n")
+	for _, line := range lines {
+		parts := strings.Split(line, "\x00")
+		if len(parts) >= 6 {
+			refs := ""
+			if len(parts) >= 7 {
+				refs = parts[6]
+			}
+			commits = append(commits, CommitSummary{
+				Hash:         parts[0],
+				ShortHash:    parts[1],
+				AuthorName:   parts[2],
+				AuthorEmail:  parts[3],
+				RelativeDate: parts[4],
+				Subject:      parts[5],
+				Refs:         refs,
+			})
+		}
+	}
+	return commits, nil
+}
+
+// Push pushes the current branch to origin.
+func (s *BranchService) Push(ctx context.Context, repoPath string) error {
+	_, err := s.runner.Run(ctx, repoPath, "push")
+	return err
+}
+
+

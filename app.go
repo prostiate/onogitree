@@ -272,6 +272,22 @@ func (a *App) AddToGitignore(repoPath string, pattern string) error {
 	return nil
 }
 
+// GetFileDiff returns unified diff output for a file.
+func (a *App) GetFileDiff(repoPath string, filePath string, staged bool) (string, error) {
+	return a.branchSvc.GetFileDiff(a.ctx, repoPath, filePath, staged)
+}
+
+// GetRecentCommits returns recent commit history for a repo.
+func (a *App) GetRecentCommits(repoPath string, limit int) ([]git.CommitSummary, error) {
+	return a.branchSvc.GetRecentCommits(a.ctx, repoPath, limit)
+}
+
+// PushRepository pushes commits on the current branch to upstream.
+func (a *App) PushRepository(repoPath string) error {
+	return a.branchSvc.Push(a.ctx, repoPath)
+}
+
+
 
 // RunBatchPull triggers parallel pull across all open repositories emitting real-time events.
 func (a *App) RunBatchPull(skipDirty bool) error {

@@ -1,6 +1,7 @@
 import * as App from '../../wailsjs/go/main/App';
 import * as Runtime from '../../wailsjs/runtime/runtime';
-import { RepoStatus, BranchInfo, DiscoveredRepo, WorkspaceRecord, ResourceStats, BatchProgressEvent } from '../types/git';
+import { RepoStatus, BranchInfo, DiscoveredRepo, WorkspaceRecord, ResourceStats, BatchProgressEvent, CommitSummary } from '../types/git';
+
 
 export const WailsBridge = {
   isAvailable(): boolean {
@@ -233,6 +234,35 @@ export const WailsBridge = {
       throw err;
     }
   },
+
+  async getFileDiff(repoPath: string, filePath: string, staged: boolean): Promise<string> {
+    try {
+      return await App.GetFileDiff(repoPath, filePath, staged);
+    } catch (err) {
+      console.error('GetFileDiff error:', err);
+      return '';
+    }
+  },
+
+  async getRecentCommits(repoPath: string, limit: number = 10): Promise<CommitSummary[]> {
+    try {
+      const commits = await App.GetRecentCommits(repoPath, limit);
+      return commits as CommitSummary[];
+    } catch (err) {
+      console.error('GetRecentCommits error:', err);
+      return [];
+    }
+  },
+
+  async pushRepository(repoPath: string): Promise<void> {
+    try {
+      await App.PushRepository(repoPath);
+    } catch (err) {
+      console.error('PushRepository error:', err);
+      throw err;
+    }
+  },
+
 
 
 

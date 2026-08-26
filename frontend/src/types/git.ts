@@ -79,3 +79,15 @@ export interface ResourceStats {
   numCpu: number;
   timestamp: number;
 }
+
+export interface CommitSummary {
+  hash: string;
+  shortHash: string;
+  authorName: string;
+  authorEmail: string;
+  date: string;
+  relativeDate: string;
+  subject: string;
+  refs?: string;
+}
+

@@ -220,6 +220,7 @@ export const ChangesView: Component = () => {
 
     return (
       <div
+        onClick={() => repoStore.selectFileForDiff(file.path, isStagedSection)}
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -233,6 +234,7 @@ export const ChangesView: Component = () => {
           {getStatusBadge(file.status)}
           <span class="text-gray-200 truncate">{node.name}</span>
         </div>
+
 
         <div class="flex items-center gap-1">
           <Show
@@ -499,6 +501,7 @@ export const ChangesView: Component = () => {
                         <For each={stagedFiles()}>
                           {(file) => (
                             <div
+                              onClick={() => repoStore.selectFileForDiff(file.path, true)}
                               onContextMenu={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -565,6 +568,7 @@ export const ChangesView: Component = () => {
                         <For each={unstagedFiles()}>
                           {(file) => (
                             <div
+                              onClick={() => repoStore.selectFileForDiff(file.path, false)}
                               onContextMenu={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -592,6 +596,7 @@ export const ChangesView: Component = () => {
                             </div>
                           )}
                         </For>
+
                       </div>
                     }
                   >
