@@ -72,3 +72,8 @@ All deep architectural and design documents are maintained in the [`docs/`](./do
    - TypeScript IPC interface definitions.
    - Phased implementation roadmap (MVP to full release).
 
+5. [**`docs/audit_and_clarifications.md`**](./docs/audit_and_clarifications.md)
+   - Comprehensive audit matrix of operational behaviors, edge cases, and confirmation items.
+   - Workspace presets vs flat list, dirty repo pull policies, push safety guardrails, and authentication.
+
+
