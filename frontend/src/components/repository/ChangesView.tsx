@@ -236,7 +236,8 @@ export const ChangesView: Component<ChangesViewProps> = (props) => {
           }
         >
           {(repo) => (
-            <div class="flex flex-col flex-1 overflow-hidden p-3 gap-2.5">
+            /* Whole content area is smoothly scrollable together */
+            <div class="flex-1 overflow-y-auto p-3 space-y-3">
               {/* 1. If 'commit' tab is active, show the Commit Changes Section */}
               <Show
                 when={activeTab() === "commit" && activeCommitHash()}
@@ -248,7 +249,7 @@ export const ChangesView: Component<ChangesViewProps> = (props) => {
                       stagedCount={stagedFiles().length}
                     />
 
-                    <div class="flex-1 overflow-y-auto space-y-3 mt-1 pr-1">
+                    <div class="space-y-3 pt-1">
                       <StagedSection
                         repoPath={repo().path}
                         files={stagedFiles()}
@@ -276,14 +277,12 @@ export const ChangesView: Component<ChangesViewProps> = (props) => {
                   </>
                 }
               >
-                <div class="flex-1 overflow-y-auto pr-1">
-                  <CommitChangesSection
-                    repoPath={repo().path}
-                    commitHash={activeCommitHash()!}
-                    viewMode={viewMode()}
-                    onClose={() => setActiveTab("workingTree")}
-                  />
-                </div>
+                <CommitChangesSection
+                  repoPath={repo().path}
+                  commitHash={activeCommitHash()!}
+                  viewMode={viewMode()}
+                  onClose={() => setActiveTab("workingTree")}
+                />
               </Show>
             </div>
           )}

@@ -78,39 +78,42 @@ export const UncommittedChangesCard: Component<UncommittedChangesCardProps> = (p
 
   return (
     <div class="bg-[#11141D] border border-gray-800 rounded-2xl p-6 space-y-4 shadow-xl select-none">
-      <div class="flex items-center justify-between flex-wrap gap-3">
+      <div class="flex items-center justify-between flex-wrap gap-2.5">
         <div class="flex items-center gap-2">
-          <Layers class="w-4 h-4 text-indigo-400" />
+          <Layers class="w-4 h-4 text-indigo-400 flex-shrink-0" />
           <h2 class="text-xs font-bold uppercase tracking-wider text-gray-200">
-            Active Uncommitted Changes ({files().length})
+            Active Uncommitted Changes
           </h2>
+          <span class="px-2 py-0.5 bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono text-[11px] font-bold rounded-full">
+            {files().length}
+          </span>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center flex-wrap gap-1.5 sm:gap-2">
           <Show when={files().length > 0}>
-            {/* Expand/Collapse All (Tree Mode only) */}
-            <Show when={viewMode() === "tree"}>
-              <button
-                onClick={toggleExpandAll}
-                class="px-2.5 py-1 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 rounded-lg text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 cursor-pointer transition-colors"
-                title={
-                  isAllExpanded()
-                    ? "Collapse all uncommitted folders"
-                    : "Expand all uncommitted folders"
-                }
-              >
-                <Show
-                  when={isAllExpanded()}
-                  fallback={<ChevronsUpDown class="w-3.5 h-3.5 text-indigo-400" />}
+            {/* View Mode & Collapse Switcher Group */}
+            <div class="flex items-center bg-[#151926] border border-gray-700/60 rounded-lg p-0.5 shadow-xs">
+              <Show when={viewMode() === "tree"}>
+                <button
+                  onClick={toggleExpandAll}
+                  class="p-1 sm:px-2 sm:py-0.5 hover:bg-[#1E2436] rounded text-gray-300 hover:text-white flex items-center gap-1 cursor-pointer transition-colors text-[10.5px] font-medium"
+                  title={
+                    isAllExpanded()
+                      ? "Collapse all uncommitted folders"
+                      : "Expand all uncommitted folders"
+                  }
                 >
-                  <ChevronsUpDown class="w-3.5 h-3.5 text-amber-400 rotate-90" />
-                </Show>
-                <span>{isAllExpanded() ? "Collapse All" : "Expand All"}</span>
-              </button>
-            </Show>
+                  <Show
+                    when={isAllExpanded()}
+                    fallback={<ChevronsUpDown class="w-3.5 h-3.5 text-indigo-400" />}
+                  >
+                    <ChevronsUpDown class="w-3.5 h-3.5 text-amber-400 rotate-90" />
+                  </Show>
+                  <span class="hidden md:inline">{isAllExpanded() ? "Collapse" : "Expand"}</span>
+                </button>
+                <div class="w-px h-3.5 bg-gray-700 mx-0.5" />
+              </Show>
 
-            {/* Tree vs List View Mode Switcher */}
-            <div class="flex items-center bg-[#151926] border border-gray-700/60 rounded-lg p-0.5">
               <button
                 onClick={() =>
                   settingsStore.updateSetting(
@@ -118,15 +121,15 @@ export const UncommittedChangesCard: Component<UncommittedChangesCardProps> = (p
                     "tree",
                   )
                 }
-                class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
+                class={`p-1 sm:px-2 sm:py-0.5 rounded text-[10.5px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
                   viewMode() === "tree"
-                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
+                    ? "bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/40"
                     : "text-gray-400 hover:text-white"
                 }`}
                 title="View as Tree"
               >
                 <FolderTree class="w-3 h-3" />
-                <span>Tree</span>
+                <span class="hidden sm:inline">Tree</span>
               </button>
               <button
                 onClick={() =>
@@ -135,41 +138,43 @@ export const UncommittedChangesCard: Component<UncommittedChangesCardProps> = (p
                     "list",
                   )
                 }
-                class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
+                class={`p-1 sm:px-2 sm:py-0.5 rounded text-[10.5px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
                   viewMode() === "list"
-                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
+                    ? "bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/40"
                     : "text-gray-400 hover:text-white"
                 }`}
                 title="View as Flat List"
               >
                 <List class="w-3 h-3" />
-                <span>List</span>
+                <span class="hidden sm:inline">List</span>
               </button>
             </div>
 
-            <div class="h-4 w-px bg-gray-700 mx-0.5" />
-
+            {/* Primary Action: View All Changes */}
             <button
               onClick={() => repoStore.selectFileForDiff("__ALL__", false)}
-              class="px-2.5 py-1 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/35 text-indigo-300 hover:text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              class="px-2.5 py-1 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/35 text-indigo-300 hover:text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               title="View combined diff of all uncommitted changes"
             >
               <FileDiff class="w-3.5 h-3.5 text-indigo-400" />
               <span>View All Changes</span>
             </button>
 
-            <button
-              onClick={() => repoStore.stageFiles(props.repo.path, [])}
-              class="px-2.5 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-semibold rounded-lg text-xs transition-colors cursor-pointer"
-            >
-              Stage All
-            </button>
-            <button
-              onClick={() => repoStore.unstageFiles(props.repo.path, [])}
-              class="px-2.5 py-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-semibold rounded-lg text-xs transition-colors cursor-pointer"
-            >
-              Unstage All
-            </button>
+            {/* Staging Action Buttons */}
+            <div class="flex items-center gap-1">
+              <button
+                onClick={() => repoStore.stageFiles(props.repo.path, [])}
+                class="px-2.5 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-semibold rounded-lg text-xs transition-colors cursor-pointer"
+              >
+                Stage All
+              </button>
+              <button
+                onClick={() => repoStore.unstageFiles(props.repo.path, [])}
+                class="px-2.5 py-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-semibold rounded-lg text-xs transition-colors cursor-pointer"
+              >
+                Unstage All
+              </button>
+            </div>
           </Show>
         </div>
       </div>
