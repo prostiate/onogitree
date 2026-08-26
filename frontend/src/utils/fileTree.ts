@@ -1,28 +1,31 @@
 import { FileStatus } from "../types/git";
 
-export interface FileTreeNode {
+export interface GenericTreeNode<T> {
   id: string;
   name: string;
   fullPath: string;
   isFolder: boolean;
-  file?: FileStatus;
-  children: FileTreeNode[];
+  item?: T;
+  file?: T;
+  children: GenericTreeNode<T>[];
 }
 
-export function buildFileTree(files: FileStatus[]): FileTreeNode[] {
-  interface MutableNode {
+export function buildGenericTree<T extends { path: string }>(
+  items: T[],
+): GenericTreeNode<T>[] {
+  interface MutableNode<T> {
     id: string;
     name: string;
     fullPath: string;
     isFolder: boolean;
-    file?: FileStatus;
-    children: Map<string, MutableNode>;
+    item?: T;
+    children: Map<string, MutableNode<T>>;
   }
 
-  const rootMap = new Map<string, MutableNode>();
+  const rootMap = new Map<string, MutableNode<T>>();
 
-  for (const file of files) {
-    const parts = file.path.split("/");
+  for (const item of items) {
+    const parts = item.path.split("/");
     let currentMap = rootMap;
     let accumulatedPath = "";
 
@@ -38,8 +41,8 @@ export function buildFileTree(files: FileStatus[]): FileTreeNode[] {
           name: part,
           fullPath: accumulatedPath,
           isFolder: !isLeaf,
-          file: isLeaf ? file : undefined,
-          children: new Map<string, MutableNode>(),
+          item: isLeaf ? item : undefined,
+          children: new Map<string, MutableNode<T>>(),
         };
         currentMap.set(part, existing);
       }
@@ -50,7 +53,7 @@ export function buildFileTree(files: FileStatus[]): FileTreeNode[] {
     }
   }
 
-  function convertNode(node: MutableNode): FileTreeNode {
+  function convertNode(node: MutableNode<T>): GenericTreeNode<T> {
     const sortedChildren = Array.from(node.children.values())
       .sort((a, b) => {
         if (a.isFolder === b.isFolder) {
@@ -65,7 +68,8 @@ export function buildFileTree(files: FileStatus[]): FileTreeNode[] {
       name: node.name,
       fullPath: node.fullPath,
       isFolder: node.isFolder,
-      file: node.file,
+      item: node.item,
+      file: node.item,
       children: sortedChildren,
     };
   }
@@ -80,10 +84,16 @@ export function buildFileTree(files: FileStatus[]): FileTreeNode[] {
     .map(convertNode);
 }
 
-export function sortFiles(
-  files: FileStatus[],
+// Backward compatibility alias for ChangesView
+export type FileTreeNode = GenericTreeNode<FileStatus>;
+export function buildFileTree<T extends { path: string }>(files: T[]) {
+  return buildGenericTree<T>(files);
+}
+
+export function sortFiles<T extends { path: string; status: string }>(
+  files: T[],
   sortBy: "path" | "name" | "status",
-): FileStatus[] {
+): T[] {
   return [...files].sort((a, b) => {
     if (sortBy === "name") {
       const nameA = a.path.split("/").pop() || "";

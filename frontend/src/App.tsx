@@ -166,42 +166,48 @@ export const App: Component = () => {
         />
 
         {/* Right Workspace Main Panel */}
-        <main class="flex-1 bg-carbon-base flex flex-col overflow-hidden">
+        <main class="flex-1 bg-carbon-base flex flex-col overflow-hidden relative">
           <Show
-            when={repoStore.selectedFileDiff()}
+            when={selectedRepo()}
             fallback={
-              <Show
-                when={selectedRepo()}
-                fallback={
-                  <div class="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-500">
-                    <FolderGit2 class="w-12 h-12 text-gray-600 mb-3 opacity-40" />
-                    <h2 class="text-sm font-semibold text-gray-300 mb-1">
-                      No Repository Selected
-                    </h2>
-                    <p class="text-xs max-w-sm mb-4">
-                      Open a repository from the left panel or click Open Repo
-                      to scan a folder containing multiple Git projects.
-                    </p>
-                    <button
-                      onClick={() => setIsOpenRepoOpen(true)}
-                      class="px-4 py-2 bg-git-indigo hover:bg-git-indigo/90 text-white font-medium rounded text-xs flex items-center gap-1.5 cursor-pointer shadow-lg"
-                    >
-                      <Plus class="w-4 h-4" />
-                      <span>Open or Scan Repositories</span>
-                    </button>
-                  </div>
-                }
-              >
-                {(repo) => (
-                  <RepoDashboard
-                    repo={repo()}
-                    onBranchPickerOpen={() => setBranchPickerRepo(repo())}
-                  />
-                )}
-              </Show>
+              <div class="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-500">
+                <FolderGit2 class="w-12 h-12 text-gray-600 mb-3 opacity-40" />
+                <h2 class="text-sm font-semibold text-gray-300 mb-1">
+                  No Repository Selected
+                </h2>
+                <p class="text-xs max-w-sm mb-4">
+                  Open a repository from the left panel or click Open Repo to
+                  scan a folder containing multiple Git projects.
+                </p>
+                <button
+                  onClick={() => setIsOpenRepoOpen(true)}
+                  class="px-4 py-2 bg-git-indigo hover:bg-git-indigo/90 text-white font-medium rounded text-xs flex items-center gap-1.5 cursor-pointer shadow-lg"
+                >
+                  <Plus class="w-4 h-4" />
+                  <span>Open or Scan Repositories</span>
+                </button>
+              </div>
             }
           >
-            <DiffViewer />
+            {(repo) => (
+              <div
+                class={`flex-1 flex flex-col overflow-hidden ${
+                  repoStore.selectedFileDiff() ? "hidden" : "flex"
+                }`}
+              >
+                <RepoDashboard
+                  repo={repo()}
+                  onBranchPickerOpen={() => setBranchPickerRepo(repo())}
+                />
+              </div>
+            )}
+          </Show>
+
+          {/* High-Performance Diff Viewer */}
+          <Show when={repoStore.selectedFileDiff()}>
+            <div class="flex-1 flex flex-col overflow-hidden absolute inset-0 z-20 bg-[#0B0E14]">
+              <DiffViewer />
+            </div>
           </Show>
         </main>
       </div>

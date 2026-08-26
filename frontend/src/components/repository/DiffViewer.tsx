@@ -1,4 +1,11 @@
-import { Component, createSignal, createEffect, Show, For } from "solid-js";
+import {
+  Component,
+  createSignal,
+  createEffect,
+  createMemo,
+  Show,
+  For,
+} from "solid-js";
 import {
   FileCode,
   X,
@@ -18,22 +25,38 @@ import {
   GitCommit,
 } from "lucide-solid";
 import { repoStore } from "../../store/repoStore";
-import { WailsBridge } from "../../services/wailsBridge";
+import { settingsStore } from "../../store/settingsStore";
+
+interface ParsedLine {
+  id: number;
+  line: string;
+  type: "header" | "hunk" | "addition" | "deletion" | "context";
+  oldLineNo?: number;
+  newLineNo?: number;
+}
 
 export const DiffViewer: Component = () => {
   const [diffContent, setDiffContent] = createSignal<string>("");
   const [isLoadingDiff, setIsLoadingDiff] = createSignal<boolean>(false);
   const [copied, setCopied] = createSignal<boolean>(false);
-  const [viewLayout, setViewLayout] = createSignal<"inline" | "split">(
-    "inline",
-  );
-
-  const [collapseUnchanged, setCollapseUnchanged] = createSignal<boolean>(true);
   const [showMoreMenu, setShowMoreMenu] = createSignal<boolean>(false);
   const [currentHunkIndex, setCurrentHunkIndex] = createSignal<number>(0);
 
   const selectedDiff = () => repoStore.selectedFileDiff();
   const activeRepo = () => repoStore.selectedRepo();
+  const viewLayout = () => settingsStore.settings().diffViewLayout || "inline";
+  const collapseUnchanged = () =>
+    settingsStore.settings().diffCollapseUnchanged ?? true;
+
+  const toggleViewLayout = () => {
+    const next = viewLayout() === "inline" ? "split" : "inline";
+    settingsStore.updateSetting("diffViewLayout", next);
+  };
+
+  const toggleCollapseUnchanged = () => {
+    const next = !collapseUnchanged();
+    settingsStore.updateSetting("diffCollapseUnchanged", next);
+  };
 
   createEffect(async () => {
     const diff = selectedDiff();
@@ -43,23 +66,15 @@ export const DiffViewer: Component = () => {
       return;
     }
 
-    setIsLoadingDiff(true);
     try {
-      if (diff.commitHash) {
-        const content = await WailsBridge.getCommitFileDiff(
-          repo.path,
-          diff.commitHash,
-          diff.filePath,
-        );
-        setDiffContent(content);
-      } else {
-        const content = await WailsBridge.getFileDiff(
-          repo.path,
-          diff.filePath,
-          diff.staged,
-        );
-        setDiffContent(content);
-      }
+      // Use cached fast diff loader to prevent flashing
+      const content = await repoStore.getDiff(
+        repo.path,
+        diff.filePath,
+        diff.staged,
+        diff.commitHash,
+      );
+      setDiffContent(content);
     } catch (err) {
       console.error("Failed to load diff:", err);
       setDiffContent("Error loading diff.");
@@ -68,15 +83,7 @@ export const DiffViewer: Component = () => {
     }
   });
 
-  interface ParsedLine {
-    id: number;
-    line: string;
-    type: "header" | "hunk" | "addition" | "deletion" | "context";
-    oldLineNo?: number;
-    newLineNo?: number;
-  }
-
-  const parsedLines = () => {
+  const parsedLines = createMemo<ParsedLine[]>(() => {
     const raw = diffContent();
     if (!raw) return [];
 
@@ -99,7 +106,6 @@ export const DiffViewer: Component = () => {
         result.push({ id: idx, line, type });
       } else if (line.startsWith("@@")) {
         type = "hunk";
-        // Parse hunk header @@ -old,count +new,count @@
         const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
         if (match) {
           oldLine = parseInt(match[1], 10) - 1;
@@ -128,9 +134,11 @@ export const DiffViewer: Component = () => {
       }
     }
     return result;
-  };
+  });
 
-  const hunks = () => parsedLines().filter((l) => l.type === "hunk");
+  const hunks = createMemo(() =>
+    parsedLines().filter((l) => l.type === "hunk"),
+  );
 
   const scrollToNextHunk = () => {
     const hunkList = hunks();
@@ -205,7 +213,7 @@ export const DiffViewer: Component = () => {
               </div>
             </div>
 
-            {/* Right side: Control Actions matching Screenshots */}
+            {/* Right side: Persistent Control Actions matching Screenshots */}
             <div class="flex items-center gap-1.5 flex-shrink-0">
               {/* Previous / Next Hunk Navigation */}
               <div class="flex items-center bg-[#181D2B] border border-gray-700/60 rounded-lg p-0.5">
@@ -227,22 +235,20 @@ export const DiffViewer: Component = () => {
 
               {/* Toggle Collapse Unchanged Regions Button */}
               <button
-                onClick={() => setCollapseUnchanged(!collapseUnchanged())}
+                onClick={toggleCollapseUnchanged}
                 class={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                   collapseUnchanged()
                     ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-300"
                     : "bg-[#181D2B] border-gray-700/60 text-gray-400 hover:text-white"
                 }`}
-                title="Toggle Collapse Unchanged Regions"
+                title="Toggle Collapse Unchanged Regions (Saved)"
               >
                 <FoldHorizontal class="w-3.5 h-3.5" />
               </button>
 
               {/* Toggle Inline vs Split View */}
               <button
-                onClick={() =>
-                  setViewLayout(viewLayout() === "inline" ? "split" : "inline")
-                }
+                onClick={toggleViewLayout}
                 class="p-1.5 bg-[#181D2B] hover:bg-[#22293D] border border-gray-700/60 rounded-lg text-gray-300 hover:text-white transition-colors cursor-pointer"
                 title={
                   viewLayout() === "inline"
@@ -308,9 +314,7 @@ export const DiffViewer: Component = () => {
                   <div class="absolute right-0 top-8 w-52 bg-[#141824] border border-gray-700/80 rounded-xl shadow-2xl py-1 z-40 text-xs backdrop-blur-md">
                     <button
                       onClick={() => {
-                        setViewLayout(
-                          viewLayout() === "inline" ? "split" : "inline",
-                        );
+                        toggleViewLayout();
                         setShowMoreMenu(false);
                       }}
                       class="w-full text-left px-3 py-1.5 hover:bg-[#1E2436] flex items-center justify-between text-gray-200 cursor-pointer"
@@ -324,7 +328,7 @@ export const DiffViewer: Component = () => {
 
                     <button
                       onClick={() => {
-                        setCollapseUnchanged(!collapseUnchanged());
+                        toggleCollapseUnchanged();
                         setShowMoreMenu(false);
                       }}
                       class="w-full text-left px-3 py-1.5 hover:bg-[#1E2436] flex items-center justify-between text-gray-200 cursor-pointer"
@@ -402,7 +406,7 @@ export const DiffViewer: Component = () => {
               <button
                 onClick={() => repoStore.clearFileDiff()}
                 class="p-1.5 hover:bg-gray-800 text-gray-400 hover:text-white rounded-lg transition-colors cursor-pointer"
-                title="Close Diff Viewer"
+                title="Close Diff Viewer (Esc)"
               >
                 <X class="w-4 h-4" />
               </button>
@@ -537,7 +541,13 @@ export const DiffViewer: Component = () => {
                             <div class="grid grid-cols-2 divide-x divide-gray-800 text-[11.5px]">
                               {/* Left Column: Old Version */}
                               <div
-                                class={`px-3 py-0.5 flex items-start ${item.type === "deletion" ? "bg-rose-500/15 text-rose-300" : item.type === "addition" ? "bg-transparent text-transparent" : "text-gray-300"}`}
+                                class={`px-3 py-0.5 flex items-start ${
+                                  item.type === "deletion"
+                                    ? "bg-rose-500/15 text-rose-300"
+                                    : item.type === "addition"
+                                      ? "bg-transparent text-transparent"
+                                      : "text-gray-300"
+                                }`}
                               >
                                 <span class="w-7 text-right text-gray-600 select-none mr-2 text-[10px]">
                                   {item.oldLineNo || ""}
@@ -556,7 +566,13 @@ export const DiffViewer: Component = () => {
 
                               {/* Right Column: New Version */}
                               <div
-                                class={`px-3 py-0.5 flex items-start ${item.type === "addition" ? "bg-emerald-500/15 text-emerald-200" : item.type === "deletion" ? "bg-transparent text-transparent" : "text-gray-300"}`}
+                                class={`px-3 py-0.5 flex items-start ${
+                                  item.type === "addition"
+                                    ? "bg-emerald-500/15 text-emerald-200"
+                                    : item.type === "deletion"
+                                      ? "bg-transparent text-transparent"
+                                      : "text-gray-300"
+                                }`}
                               >
                                 <span class="w-7 text-right text-gray-600 select-none mr-2 text-[10px]">
                                   {item.newLineNo || ""}

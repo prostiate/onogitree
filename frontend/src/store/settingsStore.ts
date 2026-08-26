@@ -30,6 +30,9 @@ export interface AppSettings extends AppearanceProfile {
   workerConcurrency: number;
   skipDirtyByDefault: boolean;
   activeAppearanceProfile: string;
+  diffViewLayout: "inline" | "split";
+  diffCollapseUnchanged: boolean;
+  commitFilesViewMode: "tree" | "list";
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -46,6 +49,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   workerConcurrency: 6,
   skipDirtyByDefault: true,
   activeAppearanceProfile: "Default Dark",
+  diffViewLayout: "inline",
+  diffCollapseUnchanged: true,
+  commitFilesViewMode: "tree",
 };
 
 const STORAGE_KEY = "onogitree_settings_v2";

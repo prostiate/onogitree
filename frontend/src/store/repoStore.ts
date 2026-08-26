@@ -23,10 +23,17 @@ function createRepoStore() {
   const [selectedFileDiff, setSelectedFileDiff] =
     createSignal<DiffSelection | null>(null);
   const [recentCommits, setRecentCommits] = createSignal<CommitSummary[]>([]);
+  const [expandedCommitHash, setExpandedCommitHash] = createSignal<
+    string | null
+  >(null);
   const [selectedCommitDetail, setSelectedCommitDetail] =
     createSignal<CommitDetail | null>(null);
   const [isLoadingCommitDetail, setIsLoadingCommitDetail] =
     createSignal<boolean>(false);
+
+  // Fast In-Memory Diff & Commit Cache to prevent flash/flicker
+  const diffCache = new Map<string, string>();
+  const commitCache = new Map<string, CommitDetail>();
 
   const selectedRepo = createMemo(() => {
     const id = selectedRepoId();
@@ -63,6 +70,7 @@ function createRepoStore() {
     filteredRepositories,
     selectedFileDiff,
     recentCommits,
+    expandedCommitHash,
     selectedCommitDetail,
     isLoadingCommitDetail,
 
@@ -73,6 +81,7 @@ function createRepoStore() {
     selectRepo(id: string) {
       setSelectedRepoId(id);
       setSelectedFileDiff(null);
+      setExpandedCommitHash(null);
       setSelectedCommitDetail(null);
       void this.loadRecentCommits(id);
     },
@@ -85,19 +94,39 @@ function createRepoStore() {
       setSelectedFileDiff(null);
     },
 
+    setExpandedCommit(hash: string | null) {
+      setExpandedCommitHash(hash);
+      if (!hash) {
+        setSelectedCommitDetail(null);
+        return;
+      }
+      void this.selectCommit(hash);
+    },
+
     async selectCommit(commitHash: string) {
       const repo = selectedRepo();
       if (!repo) return;
+
+      const cacheKey = `${repo.path}::${commitHash}`;
+      if (commitCache.has(cacheKey)) {
+        setSelectedCommitDetail(commitCache.get(cacheKey)!);
+        setExpandedCommitHash(commitHash);
+        return;
+      }
+
       setIsLoadingCommitDetail(true);
       try {
         const detail = await WailsBridge.getCommitDetails(
           repo.path,
           commitHash,
         );
-        setSelectedCommitDetail(detail);
+        if (detail) {
+          commitCache.set(cacheKey, detail);
+          setSelectedCommitDetail(detail);
+          setExpandedCommitHash(commitHash);
+        }
       } catch (err) {
         console.error("Failed to load commit details:", err);
-        setSelectedCommitDetail(null);
       } finally {
         setIsLoadingCommitDetail(false);
       }
@@ -105,6 +134,36 @@ function createRepoStore() {
 
     clearSelectedCommit() {
       setSelectedCommitDetail(null);
+      setExpandedCommitHash(null);
+    },
+
+    async getDiff(
+      repoPath: string,
+      filePath: string,
+      staged: boolean,
+      commitHash?: string,
+    ): Promise<string> {
+      const cacheKey = `${repoPath}::${commitHash || (staged ? "staged" : "unstaged")}::${filePath}`;
+      if (diffCache.has(cacheKey)) {
+        return diffCache.get(cacheKey)!;
+      }
+
+      let diff = "";
+      if (commitHash) {
+        diff = await WailsBridge.getCommitFileDiff(
+          repoPath,
+          commitHash,
+          filePath,
+        );
+      } else {
+        diff = await WailsBridge.getFileDiff(repoPath, filePath, staged);
+      }
+      diffCache.set(cacheKey, diff);
+      return diff;
+    },
+
+    invalidateDiffCache() {
+      diffCache.clear();
     },
 
     async loadRecentCommits(repoPath: string) {
@@ -201,6 +260,7 @@ function createRepoStore() {
 
     async refreshRepo(path: string) {
       try {
+        this.invalidateDiffCache();
         const status = await WailsBridge.getRepoStatus(path);
         setRepositories((prev) =>
           prev.map((r) => (r.id === path ? status : r)),
@@ -214,6 +274,7 @@ function createRepoStore() {
     async refreshAll() {
       setIsLoading(true);
       try {
+        this.invalidateDiffCache();
         const statuses = await WailsBridge.refreshAll();
         setRepositories(statuses);
         const selId = selectedRepoId();
@@ -230,6 +291,7 @@ function createRepoStore() {
     async checkoutBranch(repoPath: string, branchName: string) {
       setIsLoading(true);
       try {
+        this.invalidateDiffCache();
         await WailsBridge.checkoutBranch(repoPath, branchName);
         await this.refreshRepo(repoPath);
       } catch (err) {
@@ -242,6 +304,7 @@ function createRepoStore() {
 
     async stageFiles(repoPath: string, files: string[]) {
       try {
+        this.invalidateDiffCache();
         await WailsBridge.stageFiles(repoPath, files);
         await this.refreshRepo(repoPath);
       } catch (err) {
@@ -251,6 +314,7 @@ function createRepoStore() {
 
     async unstageFiles(repoPath: string, files: string[]) {
       try {
+        this.invalidateDiffCache();
         await WailsBridge.unstageFiles(repoPath, files);
         await this.refreshRepo(repoPath);
       } catch (err) {
@@ -260,6 +324,7 @@ function createRepoStore() {
 
     async discardFiles(repoPath: string, files: string[]) {
       try {
+        this.invalidateDiffCache();
         await WailsBridge.discardFiles(repoPath, files);
         if (
           selectedFileDiff() &&
@@ -283,6 +348,7 @@ function createRepoStore() {
 
     async addToGitignore(repoPath: string, pattern: string) {
       try {
+        this.invalidateDiffCache();
         await WailsBridge.addToGitignore(repoPath, pattern);
         await this.refreshRepo(repoPath);
       } catch (err) {
@@ -293,6 +359,7 @@ function createRepoStore() {
     async commit(repoPath: string, message: string, amend: boolean = false) {
       setIsLoading(true);
       try {
+        this.invalidateDiffCache();
         await WailsBridge.commit(repoPath, message, amend);
         await this.refreshRepo(repoPath);
       } catch (err) {
