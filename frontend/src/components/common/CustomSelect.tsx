@@ -52,7 +52,7 @@ export const CustomSelect: Component<CustomSelectProps> = (props) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen())}
-        class="w-full px-3 py-2 bg-[#12151D] hover:bg-[#181C26] border border-carbon-border focus:border-git-indigo rounded text-gray-200 text-xs flex items-center justify-between transition-colors cursor-pointer text-left shadow-inner"
+        class="w-full px-3 py-2 bg-carbon-base hover:bg-carbon-hover border border-carbon-border focus:border-git-indigo rounded-lg text-gray-200 text-xs flex items-center justify-between transition-colors cursor-pointer text-left shadow-sm"
       >
         <span class="font-medium truncate text-gray-100">
           {selectedOption()?.label || props.placeholder || "Select option..."}
@@ -66,7 +66,7 @@ export const CustomSelect: Component<CustomSelectProps> = (props) => {
 
       {/* Dropdown Menu */}
       <Show when={isOpen()}>
-        <div class="absolute left-0 right-0 top-full mt-1 bg-[#161924] border border-carbon-border rounded shadow-2xl z-50 py-1 max-h-56 overflow-y-auto divide-y divide-carbon-border/30 animate-in fade-in-50 duration-100">
+        <div class="absolute left-0 right-0 top-full mt-1 bg-carbon-elevated border border-carbon-border rounded-xl shadow-2xl z-50 py-1 max-h-56 overflow-y-auto divide-y divide-carbon-border/40 animate-in fade-in-50 duration-100">
           <For each={props.options}>
             {(opt) => {
               const isSelected = () => opt.value === props.value;
@@ -78,14 +78,16 @@ export const CustomSelect: Component<CustomSelectProps> = (props) => {
                   }}
                   class={`px-3 py-2 flex items-center justify-between cursor-pointer transition-colors ${
                     isSelected()
-                      ? "bg-git-indigo/20 text-git-indigo font-semibold"
+                      ? "bg-git-indigo/20 text-git-indigo font-bold"
                       : "text-gray-200 hover:bg-carbon-hover hover:text-white"
                   }`}
                 >
                   <div class="flex flex-col min-w-0 pr-2">
-                    <span class="text-xs truncate">{opt.label}</span>
+                    <span class="text-xs truncate font-medium">
+                      {opt.label}
+                    </span>
                     <Show when={opt.description}>
-                      <span class="text-[10.5px] text-gray-400 truncate">
+                      <span class="text-[10.5px] text-gray-400 truncate mt-0.5">
                         {opt.description}
                       </span>
                     </Show>

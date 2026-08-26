@@ -600,7 +600,7 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
 
                       <div class="flex items-center gap-2 flex-shrink-0">
                         <Show when={commit.refs}>
-                          <span class="px-2 py-0.5 bg-gray-800 text-gray-300 font-mono text-[10px] rounded-full border border-gray-700">
+                          <span class="px-2.5 py-0.5 bg-[#181D2B] text-gray-300 font-mono text-[10px] rounded-full border border-gray-700/60 shadow-sm">
                             {commit.refs}
                           </span>
                         </Show>
@@ -663,7 +663,7 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                                             `sha-${detail().hash}`,
                                           )
                                         }
-                                        class="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
+                                        class="px-2 py-1 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 text-gray-300 hover:text-white rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
                                       >
                                         <Show
                                           when={
@@ -738,7 +738,7 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                                           }
                                           class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
                                             commitFilesViewMode() === "tree"
-                                              ? "bg-indigo-500/30 text-indigo-200 font-bold"
+                                              ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
                                               : "text-gray-400 hover:text-white"
                                           }`}
                                           title="View as Tree"
@@ -755,7 +755,7 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                                           }
                                           class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
                                             commitFilesViewMode() === "list"
-                                              ? "bg-indigo-500/30 text-indigo-200 font-bold"
+                                              ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
                                               : "text-gray-400 hover:text-white"
                                           }`}
                                           title="View as Flat List"

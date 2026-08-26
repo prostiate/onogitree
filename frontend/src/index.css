@@ -162,11 +162,26 @@
   }
 
   /* Status Badges & Accents in Light Theme */
+  html.theme-light .bg-gray-800,
+  html.theme-light .bg-gray-700,
+  html.theme-light .bg-gray-900 {
+    background-color: #ede9e0 !important;
+    border-color: #dcd6cb !important;
+    color: #1e232e !important;
+  }
+
   html.theme-light .bg-indigo-500\/10,
   html.theme-light .bg-indigo-500\/15,
-  html.theme-light .bg-indigo-500\/20 {
+  html.theme-light .bg-indigo-500\/20,
+  html.theme-light .bg-indigo-500\/30 {
     background-color: #eef2ff !important;
     border-color: #c7d2fe !important;
+    color: #4338ca !important;
+  }
+
+  html.theme-light .text-indigo-200,
+  html.theme-light .text-indigo-300,
+  html.theme-light .text-indigo-400 {
     color: #4338ca !important;
   }
 
@@ -177,10 +192,20 @@
     color: #065f46 !important;
   }
 
+  html.theme-light .text-emerald-300,
+  html.theme-light .text-emerald-400 {
+    color: #065f46 !important;
+  }
+
   html.theme-light .bg-amber-500\/15,
   html.theme-light .bg-amber-500\/20 {
     background-color: #fffbeb !important;
     border-color: #fde68a !important;
+    color: #92400e !important;
+  }
+
+  html.theme-light .text-amber-300,
+  html.theme-light .text-amber-400 {
     color: #92400e !important;
   }
 
@@ -191,10 +216,20 @@
     color: #991b1b !important;
   }
 
+  html.theme-light .text-rose-300,
+  html.theme-light .text-rose-400 {
+    color: #991b1b !important;
+  }
+
   html.theme-light .bg-cyan-500\/15,
   html.theme-light .bg-cyan-500\/20 {
     background-color: #ecfeff !important;
     border-color: #a5f3fc !important;
+    color: #155e75 !important;
+  }
+
+  html.theme-light .text-cyan-300,
+  html.theme-light .text-cyan-400 {
     color: #155e75 !important;
   }
 
