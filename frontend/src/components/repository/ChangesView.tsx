@@ -1,4 +1,10 @@
-import { Component, createSignal, createMemo, Show } from "solid-js";
+import {
+  Component,
+  createSignal,
+  createMemo,
+  createEffect,
+  Show,
+} from "solid-js";
 import {
   Plus,
   Minus,
@@ -16,10 +22,14 @@ import { ChangesHeader } from "./changes/ChangesHeader";
 import { CommitComposer } from "./changes/CommitComposer";
 import { StagedSection } from "./changes/StagedSection";
 import { UnstagedSection } from "./changes/UnstagedSection";
+import { CommitChangesSection } from "./changes/CommitChangesSection";
 
 export const ChangesView: Component = () => {
   const [viewMode, setViewMode] = createSignal<"list" | "tree">("tree");
   const [sortBy, setSortBy] = createSignal<"path" | "name" | "status">("path");
+  const [activeTab, setActiveTab] = createSignal<"workingTree" | "commit">(
+    "workingTree",
+  );
   const [collapsedFolders, setCollapsedFolders] = createSignal<
     Record<string, boolean>
   >({});
@@ -31,6 +41,27 @@ export const ChangesView: Component = () => {
 
   const activeRepo = () => repoStore.selectedRepo();
   const rawFiles = () => activeRepo()?.files || [];
+
+  // Active commit tracker: when diffing a commit or expanding one in history
+  const activeCommitHash = createMemo(() => {
+    const diff = repoStore.selectedFileDiff();
+    if (diff?.commitHash) {
+      return diff.commitHash;
+    }
+    const expanded = repoStore.expandedCommitHash();
+    if (expanded) {
+      return expanded;
+    }
+    return null;
+  });
+
+  // Automatically switch tab to 'commit' whenever a new commit is selected/diffed
+  createEffect(() => {
+    const hash = activeCommitHash();
+    if (hash) {
+      setActiveTab("commit");
+    }
+  });
 
   const sortedFiles = createMemo(() => sortFiles(rawFiles(), sortBy()));
   const stagedFiles = createMemo(() => sortedFiles().filter((f) => f.staged));
@@ -174,46 +205,76 @@ export const ChangesView: Component = () => {
         onSortByChange={setSortBy}
         isAllCollapsed={isAllTreeFoldersCollapsed()}
         onToggleExpandAll={toggleExpandAllTreeFolders}
-        onStageAll={() => activeRepo() && repoStore.stageFiles(activeRepo()!.path, [])}
-        onUnstageAll={() => activeRepo() && repoStore.unstageFiles(activeRepo()!.path, [])}
+        onStageAll={() =>
+          activeRepo() && repoStore.stageFiles(activeRepo()!.path, [])
+        }
+        onUnstageAll={() =>
+          activeRepo() && repoStore.unstageFiles(activeRepo()!.path, [])
+        }
+        activeTab={activeTab()}
+        onTabChange={setActiveTab}
+        activeCommitHash={activeCommitHash()}
+        totalWorkingChanges={rawFiles().length}
       />
 
       <Show
         when={activeRepo()}
         fallback={
-          <div class="p-4 text-center text-xs text-gray-500">
+          <div class="p-6 text-center text-xs text-gray-500 font-mono">
             Select a repository to view working tree changes.
           </div>
         }
       >
         {(repo) => (
-          <div class="flex flex-col flex-1 overflow-hidden p-3 gap-2">
-            <CommitComposer
-              repo={repo()}
-              stagedCount={stagedFiles().length}
-            />
+          <div class="flex flex-col flex-1 overflow-hidden p-3 gap-2.5">
+            {/* 1. If 'commit' tab is active, show the Commit Changes Section */}
+            <Show
+              when={activeTab() === "commit" && activeCommitHash()}
+              fallback={
+                /* 2. Default: Working Tree Changes */
+                <>
+                  <CommitComposer
+                    repo={repo()}
+                    stagedCount={stagedFiles().length}
+                  />
 
-            <div class="flex-1 overflow-y-auto space-y-3 mt-1 pr-1">
-              <StagedSection
-                repoPath={repo().path}
-                files={stagedFiles()}
-                tree={stagedTree()}
-                viewMode={viewMode()}
-                isFolderCollapsed={(id) => collapsedFolders()[id] || false}
-                onToggleFolder={toggleFolder}
-                onContextMenu={handleContextMenu}
-              />
+                  <div class="flex-1 overflow-y-auto space-y-3 mt-1 pr-1">
+                    <StagedSection
+                      repoPath={repo().path}
+                      files={stagedFiles()}
+                      tree={stagedTree()}
+                      viewMode={viewMode()}
+                      isFolderCollapsed={(id) =>
+                        collapsedFolders()[id] || false
+                      }
+                      onToggleFolder={toggleFolder}
+                      onContextMenu={handleContextMenu}
+                    />
 
-              <UnstagedSection
-                repoPath={repo().path}
-                files={unstagedFiles()}
-                tree={unstagedTree()}
-                viewMode={viewMode()}
-                isFolderCollapsed={(id) => collapsedFolders()[id] || false}
-                onToggleFolder={toggleFolder}
-                onContextMenu={handleContextMenu}
-              />
-            </div>
+                    <UnstagedSection
+                      repoPath={repo().path}
+                      files={unstagedFiles()}
+                      tree={unstagedTree()}
+                      viewMode={viewMode()}
+                      isFolderCollapsed={(id) =>
+                        collapsedFolders()[id] || false
+                      }
+                      onToggleFolder={toggleFolder}
+                      onContextMenu={handleContextMenu}
+                    />
+                  </div>
+                </>
+              }
+            >
+              <div class="flex-1 overflow-y-auto pr-1">
+                <CommitChangesSection
+                  repoPath={repo().path}
+                  commitHash={activeCommitHash()!}
+                  viewMode={viewMode()}
+                  onClose={() => setActiveTab("workingTree")}
+                />
+              </div>
+            </Show>
           </div>
         )}
       </Show>
