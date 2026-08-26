@@ -23,7 +23,13 @@ export const DiffFileAccordion: Component<DiffFileAccordionProps> = (props) => {
   const hunks = () => props.section.lines.filter((l) => l.type === "hunk");
 
   return (
-    <div class="rounded-xl border border-gray-800/80 overflow-hidden bg-[#0A0D14] shadow-xl">
+    <div
+      class="rounded-xl border border-gray-800/80 overflow-hidden bg-[#0A0D14] shadow-xl"
+      style={{
+        "content-visibility": "auto",
+        "contain-intrinsic-size": "0 38px",
+      }}
+    >
       {/* File Accordion Header */}
       <div
         onClick={props.onToggleCollapse}

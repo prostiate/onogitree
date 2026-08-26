@@ -42,7 +42,8 @@ function createRepoStore() {
   >(new Set<string>());
 
   // Fast In-Memory Diff & Commit Cache to prevent flash/flicker
-  const diffCache = new Map<string, string>();
+  const workingTreeDiffCache = new Map<string, string>();
+  const commitDiffCache = new Map<string, string>();
   const commitCache = new Map<string, CommitDetail>();
 
   const selectedRepo = createMemo(() => {
@@ -246,27 +247,35 @@ function createRepoStore() {
       staged: boolean,
       commitHash?: string,
     ): Promise<string> {
-      const cacheKey = `${repoPath}::${commitHash || (staged ? "staged" : "unstaged")}::${filePath}`;
-      if (diffCache.has(cacheKey)) {
-        return diffCache.get(cacheKey)!;
-      }
-
-      let diff = "";
       if (commitHash) {
-        diff = await WailsBridge.getCommitFileDiff(
+        const cacheKey = `${repoPath}::${commitHash}::${filePath}`;
+        if (commitDiffCache.has(cacheKey)) {
+          return commitDiffCache.get(cacheKey)!;
+        }
+        const diff = await WailsBridge.getCommitFileDiff(
           repoPath,
           commitHash,
           filePath,
         );
-      } else {
-        diff = await WailsBridge.getFileDiff(repoPath, filePath, staged);
+        commitDiffCache.set(cacheKey, diff);
+        return diff;
       }
-      diffCache.set(cacheKey, diff);
+
+      const cacheKey = `${repoPath}::${staged ? "staged" : "unstaged"}::${filePath}`;
+      if (workingTreeDiffCache.has(cacheKey)) {
+        return workingTreeDiffCache.get(cacheKey)!;
+      }
+
+      const diff = await WailsBridge.getFileDiff(repoPath, filePath, staged);
+      workingTreeDiffCache.set(cacheKey, diff);
       return diff;
     },
 
-    invalidateDiffCache() {
-      diffCache.clear();
+    invalidateDiffCache(all = false) {
+      workingTreeDiffCache.clear();
+      if (all) {
+        commitDiffCache.clear();
+      }
     },
 
     async loadRecentCommits(repoPath: string, limit?: number) {
@@ -388,7 +397,7 @@ function createRepoStore() {
     async refreshRepo(path: string) {
       setRefreshingRepoPaths((prev) => new Set(prev).add(path));
       try {
-        this.invalidateDiffCache();
+        this.invalidateDiffCache(false);
         const status = await WailsBridge.getRepoStatus(path);
         setRepositories((prev) =>
           prev.map((r) => (r.id === path || r.path === path ? status : r)),
@@ -407,12 +416,19 @@ function createRepoStore() {
       }
     },
 
-    async refreshAll() {
-      setIsLoading(true);
+    async refreshAll(quiet = false) {
+      if (!quiet) {
+        setIsLoading(true);
+      }
       try {
-        this.invalidateDiffCache();
+        this.invalidateDiffCache(false);
         const statuses = await WailsBridge.refreshAll();
-        setRepositories(statuses);
+        setRepositories((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(statuses)) {
+            return prev;
+          }
+          return statuses;
+        });
         const sel = selectedRepo();
         if (sel) {
           await this.loadRecentCommits(sel.path, commitLimit());
@@ -420,7 +436,9 @@ function createRepoStore() {
       } catch (err) {
         console.error("Failed to refresh all repos:", err);
       } finally {
-        setIsLoading(false);
+        if (!quiet) {
+          setIsLoading(false);
+        }
       }
     },
 

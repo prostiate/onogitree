@@ -55,16 +55,16 @@ export const App: Component = () => {
       }, 650);
     }
 
-    // Auto refresh on window focus
+    // Auto refresh on window focus (quiet background check)
     const handleFocus = () => {
-      void repoStore.refreshAll();
+      void repoStore.refreshAll(true);
     };
     window.addEventListener("focus", handleFocus);
 
-    // Periodic live state polling (every 4 seconds)
+    // Periodic live state polling (every 4 seconds, quiet background check)
     const pollTimer = setInterval(() => {
       if (document.visibilityState === "visible" && !repoStore.isLoading()) {
-        void repoStore.refreshAll();
+        void repoStore.refreshAll(true);
       }
     }, 4000);
 

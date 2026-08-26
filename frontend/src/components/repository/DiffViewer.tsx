@@ -23,32 +23,57 @@ export const DiffViewer: Component = () => {
   );
 
   let requestId = 0;
+  let lastLoadedKey = "";
 
   const selectedDiff = () => repoStore.selectedFileDiff();
   const activeRepo = () => repoStore.selectedRepo();
   const viewLayout = () => settingsStore.settings().diffViewLayout || "inline";
 
-  // Race-condition free diff loader
-  createEffect(async () => {
+  // Stable memoized diff target key to prevent background poll cascades
+  const diffTarget = createMemo(() => {
     const diff = selectedDiff();
     const repo = activeRepo();
-    if (!diff || !repo) {
+    if (!diff || !repo) return null;
+    return {
+      repoPath: repo.path,
+      filePath: diff.filePath,
+      staged: diff.staged,
+      commitHash: diff.commitHash,
+      key: `${repo.path}::${diff.commitHash || (diff.staged ? "staged" : "unstaged")}::${diff.filePath}`,
+    };
+  });
+
+  // Non-destructive, glitch-free diff loader
+  createEffect(async () => {
+    const target = diffTarget();
+    if (!target) {
       setDiffContent("");
+      lastLoadedKey = "";
+      return;
+    }
+
+    // Stable identity check: If same diff key is already loaded, avoid resetting DOM / scroll
+    if (target.key === lastLoadedKey && diffContent().length > 0) {
       return;
     }
 
     const currentReq = ++requestId;
-    setIsLoadingDiff(true);
+
+    // Only set full loader if switching to a completely new diff key with no content yet
+    if (target.key !== lastLoadedKey) {
+      setIsLoadingDiff(true);
+    }
 
     try {
       const content = await repoStore.getDiff(
-        repo.path,
-        diff.filePath,
-        diff.staged,
-        diff.commitHash,
+        target.repoPath,
+        target.filePath,
+        target.staged,
+        target.commitHash,
       );
       if (currentReq === requestId) {
         setDiffContent(content);
+        lastLoadedKey = target.key;
         setCollapsedFileIds(new Set<string>());
       }
     } catch (err) {
@@ -228,7 +253,7 @@ export const DiffViewer: Component = () => {
   return (
     <Show when={selectedDiff()}>
       {(diff) => (
-        <div class="flex-1 flex flex-col h-full bg-[#0B0E14] text-gray-200 overflow-hidden select-none">
+        <div class="flex-1 flex flex-col h-full bg-[#0B0E14] text-gray-200 overflow-hidden select-none relative">
           {/* Header */}
           <DiffHeader
             diff={diff()}
@@ -245,10 +270,17 @@ export const DiffViewer: Component = () => {
             onClose={() => repoStore.clearFileDiff()}
           />
 
+          {/* Top Subtle Loading Indicator Bar (does not destroy DOM or scroll) */}
+          <Show when={isLoadingDiff() && diffContent().length > 0}>
+            <div class="absolute top-[49px] left-0 right-0 h-0.5 bg-indigo-500/20 overflow-hidden z-20">
+              <div class="h-full bg-indigo-500 animate-pulse w-full" />
+            </div>
+          </Show>
+
           {/* Content Body */}
           <div class="flex-1 overflow-auto p-4 space-y-4 font-mono text-xs select-text leading-relaxed">
             <Show
-              when={!isLoadingDiff()}
+              when={diffContent().length > 0 || !isLoadingDiff()}
               fallback={
                 <div class="flex items-center justify-center h-full text-gray-500 gap-2 font-sans">
                   <RotateCcw class="w-4 h-4 animate-spin text-indigo-400" />
