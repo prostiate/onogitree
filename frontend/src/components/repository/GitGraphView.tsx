@@ -32,20 +32,20 @@ interface GitGraphViewProps {
   onCommitContextMenu: (e: MouseEvent, commit: CommitSummary) => void;
 }
 
-// Sophisticated, accessible palette with high contrast on both light and dark backgrounds
+// VS Code Git Graph style palette: Lane 0 is main branch color (Cobalt / Cyan Blue)
 const LANE_COLORS = [
-  "#2563EB", // Cobalt Blue
-  "#059669", // Emerald Mint
-  "#7C3AED", // Royal Purple
-  "#D97706", // Solar Amber
-  "#E11D48", // Crimson Rose
-  "#0891B2", // Cyan Teal
-  "#4F46E5", // Indigo
-  "#DB2777", // Fuchsia Pink
+  "#0098FF", // Main Branch Sky Blue
+  "#34C759", // Emerald Green
+  "#AF52DE", // Royal Purple
+  "#FF9500", // Solar Amber
+  "#FF2D55", // Crimson Rose
+  "#5856D6", // Indigo
+  "#00C7BE", // Teal
+  "#FF3B30", // Bright Red
 ];
 
-const ROW_HEIGHT = 38;
-const NODE_CY = 19;
+const ROW_HEIGHT = 36;
+const NODE_CY = 18;
 const LANE_WIDTH = 20;
 const OFFSET_X = 16;
 
@@ -101,9 +101,14 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
     const activeLanes: (string | null)[] = [];
     let maxLaneIndex = 0;
 
+    const matchesHash = (a: string | null, b: string | null) => {
+      if (!a || !b) return false;
+      return a === b || a.startsWith(b) || b.startsWith(a);
+    };
+
     const nodes: ProcessedGraphNode[] = list.map((commit) => {
       // 1. Allocate or retrieve lane for this commit
-      let laneIndex = activeLanes.indexOf(commit.hash);
+      let laneIndex = activeLanes.findIndex((h) => matchesHash(h, commit.hash));
       if (laneIndex === -1) {
         laneIndex = activeLanes.indexOf(null);
         if (laneIndex === -1) {
@@ -141,7 +146,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
         hasBottomLine = false;
       } else if (parents.length === 1) {
         const p0 = parents[0];
-        const existingLane = activeLanes.indexOf(p0);
+        const existingLane = activeLanes.findIndex((h) => matchesHash(h, p0));
 
         if (existingLane === -1 || existingLane === laneIndex) {
           // Parent continues in current lane
@@ -165,7 +170,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
 
         for (let p = 1; p < parents.length; p++) {
           const parentHash = parents[p];
-          let pLane = activeLanes.indexOf(parentHash);
+          let pLane = activeLanes.findIndex((h) => matchesHash(h, parentHash));
           if (pLane === -1) {
             pLane = activeLanes.indexOf(null);
             if (pLane === -1) {
@@ -358,7 +363,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
         <div class="select-none">
           <div
             onClick={() => toggleFolder(node.id)}
-            class="flex items-center gap-1.5 px-3 py-1 hover:bg-gray-100 dark:hover:bg-[#1A1F2C] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs font-mono transition-colors"
+            class="flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#F7F5F0] dark:hover:bg-[#161B26] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs font-mono transition-colors"
             style={{ "padding-left": `${depth * 14 + 8}px` }}
           >
             <Show
@@ -395,7 +400,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
         onClick={() =>
           repoStore.selectFileForDiff(file.path, false, commitHash)
         }
-        class="group flex items-center justify-between px-3 py-1 hover:bg-gray-100 dark:hover:bg-[#1A1F2C] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs font-mono transition-colors"
+        class="group flex items-center justify-between px-3 py-1.5 hover:bg-[#F7F5F0] dark:hover:bg-[#161B26] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs font-mono transition-colors"
         style={{ "padding-left": `${depth * 14 + 20}px` }}
       >
         <div class="flex items-center gap-2 min-w-0">
@@ -437,7 +442,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
         <div class="select-none">
           <div
             onClick={() => toggleFolder(node.id)}
-            class="flex items-center gap-1.5 px-3 py-1 hover:bg-gray-100 dark:hover:bg-[#1A1F2C] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs font-mono transition-colors"
+            class="flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#F7F5F0] dark:hover:bg-[#161B26] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs font-mono transition-colors"
             style={{ "padding-left": `${depth * 14 + 8}px` }}
           >
             <Show
@@ -472,7 +477,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
     return (
       <div
         onClick={() => repoStore.selectFileForDiff(file.path, file.staged)}
-        class="group flex items-center justify-between px-3 py-1 hover:bg-gray-100 dark:hover:bg-[#1A1F2C] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs font-mono transition-colors"
+        class="group flex items-center justify-between px-3 py-1.5 hover:bg-[#F7F5F0] dark:hover:bg-[#161B26] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs font-mono transition-colors"
         style={{ "padding-left": `${depth * 14 + 20}px` }}
       >
         <div class="flex items-center gap-2 min-w-0">
@@ -528,13 +533,13 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
       {/* 1. Top Outgoing Changes / Uncommitted Changes Node */}
       <Show when={hasOutgoingOrUncommitted()}>
         <div
-          class={`group flex items-stretch border-b border-gray-200/80 dark:border-gray-800/80 transition-colors ${
+          class={`group flex items-stretch transition-colors ${
             isOutgoingExpanded()
               ? "bg-sky-50/70 dark:bg-[#121624]/90"
               : "bg-sky-50/30 dark:bg-sky-950/10 hover:bg-sky-50/60 dark:hover:bg-sky-950/20"
           }`}
         >
-          {/* Left Graph Spine column matching width */}
+          {/* Left Graph Spine column matching width - NO bottom border to keep rail unbroken */}
           <div
             class="flex-shrink-0 relative flex flex-col items-center select-none"
             style={{ width: `${graphData().gutterWidth}px` }}
@@ -550,19 +555,19 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                 cy={NODE_CY}
                 r="6.5"
                 fill="none"
-                stroke="#0284C7"
+                stroke="#0098FF"
                 stroke-width="2"
                 stroke-dasharray="3,2.5"
               />
-              <circle cx={OFFSET_X} cy={NODE_CY} r="2.5" fill="#0284C7" />
+              <circle cx={OFFSET_X} cy={NODE_CY} r="2.5" fill="#0098FF" />
               {/* Dashed Vertical Line Connecting to HEAD Commit */}
               <line
                 x1={OFFSET_X}
                 y1={NODE_CY + 6}
                 x2={OFFSET_X}
                 y2={ROW_HEIGHT}
-                stroke="#0284C7"
-                stroke-width="2"
+                stroke="#0098FF"
+                stroke-width="2.5"
                 stroke-dasharray="3,2.5"
               />
             </svg>
@@ -570,14 +575,14 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
             {/* Continuous Vertical Spine when Outgoing is Expanded */}
             <Show when={isOutgoingExpanded()}>
               <div
-                class="absolute top-[38px] bottom-0 w-0.5 border-l-2 border-dashed border-sky-500/80"
+                class="absolute top-[36px] bottom-0 w-0.5 border-l-2 border-dashed border-sky-500/80"
                 style={{ left: `${OFFSET_X - 1}px` }}
               />
             </Show>
           </div>
 
           {/* Outgoing Changes Row Content */}
-          <div class="flex-1 min-w-0 py-2.5 pr-4">
+          <div class="flex-1 min-w-0 py-2.5 pr-4 border-b border-gray-100/80 dark:border-gray-800/30">
             <div
               onClick={() => setIsOutgoingExpanded(!isOutgoingExpanded())}
               class="flex items-center justify-between gap-3 cursor-pointer"
@@ -638,7 +643,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                   </div>
                 </div>
 
-                <div class="bg-white dark:bg-carbon-base/70 border border-gray-200 dark:border-carbon-border/60 rounded-xl overflow-hidden py-1 shadow-xs">
+                <div class="bg-white dark:bg-[#0D1017] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden py-1 shadow-xs">
                   <For each={outgoingFilesTree()}>
                     {(node) => renderOutgoingTreeNode(node)}
                   </For>
@@ -659,13 +664,13 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
 
           return (
             <div
-              class={`group flex items-stretch border-b border-gray-100 dark:border-gray-800/50 transition-colors ${
+              class={`group flex items-stretch transition-colors ${
                 isExpanded()
-                  ? "bg-indigo-50/70 dark:bg-[#121624] border-indigo-200 dark:border-indigo-500/40"
+                  ? "bg-[#EEF2FF] dark:bg-[#121624]"
                   : "hover:bg-[#F4F1EA] dark:hover:bg-[#161B26]"
               }`}
             >
-              {/* Left Graph Spine Column with uniform width */}
+              {/* Left Graph Spine Column with uniform width - NO bottom border to keep rail seamless */}
               <div
                 class="flex-shrink-0 relative flex flex-col items-center select-none"
                 style={{ width: `${graphData().gutterWidth}px` }}
@@ -753,7 +758,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                   <circle
                     cx={nodeX}
                     cy={NODE_CY}
-                    r="5.5"
+                    r="5"
                     fill={isExpanded() ? node.color : "#ffffff"}
                     class="dark:fill-[#0D1017] transition-all"
                     stroke={node.color}
@@ -767,7 +772,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                 {/* Continuous Graph Vertical Spine for Expanded Commit */}
                 <Show when={isExpanded()}>
                   <div
-                    class="absolute top-[38px] bottom-0 w-0.5"
+                    class="absolute top-[36px] bottom-0 w-0.5"
                     style={{
                       left: `${nodeX - 1}px`,
                       "background-color": node.color,
@@ -776,8 +781,8 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                 </Show>
               </div>
 
-              {/* Commit Content Body */}
-              <div class="flex-1 min-w-0 py-2.5 pr-4 flex flex-col justify-center">
+              {/* Commit Content Body - subtle bottom border only on text column */}
+              <div class="flex-1 min-w-0 py-2.5 pr-4 flex flex-col justify-center border-b border-gray-100/80 dark:border-gray-800/30">
                 {/* Commit Row Header */}
                 <div
                   onClick={() => repoStore.toggleCommitExpanded(commit.hash)}
@@ -834,7 +839,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
 
                 {/* Expanded Commit Details & Modified Files Tree */}
                 <Show when={isExpanded()}>
-                  <div class="mt-2.5 pt-2.5 border-t border-gray-200 dark:border-gray-800/80 space-y-3">
+                  <div class="mt-2.5 pt-2.5 border-t border-gray-200/80 dark:border-gray-800/80 space-y-3">
                     <Show
                       when={detail()}
                       fallback={
@@ -852,8 +857,8 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                         return (
                           <div class="space-y-3">
                             {/* Metadata / Actions Bar */}
-                            <div class="bg-white dark:bg-carbon-base/70 p-3.5 rounded-xl border border-gray-200 dark:border-carbon-border/60 text-xs font-mono space-y-2.5 shadow-xs">
-                              <div class="flex items-center justify-between text-gray-500 dark:text-gray-400 text-[11px] gap-2 flex-wrap">
+                            <div class="bg-white dark:bg-[#121624] p-3.5 rounded-2xl border border-gray-200 dark:border-gray-800 text-xs font-mono space-y-2.5 shadow-sm">
+                              <div class="flex items-center justify-between text-gray-600 dark:text-gray-400 text-[11px] gap-2 flex-wrap">
                                 <span class="truncate">SHA: {d().hash}</span>
 
                                 <div class="flex items-center gap-2">
@@ -894,13 +899,13 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                               </div>
 
                               <Show when={d().body}>
-                                <pre class="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-carbon-base/60 p-2.5 rounded-lg whitespace-pre-wrap text-[11px] border border-gray-200/80 dark:border-carbon-border/40 font-mono">
+                                <pre class="text-gray-800 dark:text-gray-200 bg-[#F7F5F0] dark:bg-[#0D1017] p-3 rounded-xl whitespace-pre-wrap text-[11px] border border-gray-200 dark:border-gray-800 font-mono leading-relaxed">
                                   {d().body}
                                 </pre>
                               </Show>
 
                               <div class="flex items-center gap-3 text-[11px] font-mono font-bold pt-0.5">
-                                <span class="text-gray-500 dark:text-gray-400">
+                                <span class="text-gray-600 dark:text-gray-400">
                                   {d().files.length} files
                                 </span>
                                 <span class="text-emerald-600 dark:text-emerald-400">
@@ -914,7 +919,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
 
                             {/* Files Tree Section */}
                             <div class="space-y-1.5">
-                              <div class="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider px-1">
+                              <div class="flex items-center justify-between text-[11px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider px-1">
                                 <span>FILES CHANGED ({d().files.length})</span>
                                 {(() => {
                                   const tree = createMemo(() =>
@@ -979,7 +984,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                                 })()}
                               </div>
 
-                              <div class="bg-white dark:bg-carbon-base/70 border border-gray-200 dark:border-carbon-border/60 rounded-xl overflow-hidden py-1 shadow-xs">
+                              <div class="bg-white dark:bg-[#0D1017] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden py-1 shadow-xs">
                                 <For each={commitFilesTree()}>
                                   {(fileNode) =>
                                     renderCommitTreeNode(fileNode, d().hash)

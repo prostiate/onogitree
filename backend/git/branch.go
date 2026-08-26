@@ -132,7 +132,7 @@ func (s *BranchService) GetRecentCommits(ctx context.Context, repoPath string, l
 	if limit <= 0 {
 		limit = 25
 	}
-	out, err := s.runner.Run(ctx, repoPath, "log", fmt.Sprintf("-n%d", limit), "--pretty=format:%H%x00%h%x00%an%x00%ae%x00%cr%x00%s%x00%D%x00%p")
+	out, err := s.runner.Run(ctx, repoPath, "log", fmt.Sprintf("-n%d", limit), "--pretty=format:%H%x00%h%x00%an%x00%ae%x00%cr%x00%s%x00%D%x00%P")
 	if err != nil {
 		return []CommitSummary{}, nil
 	}

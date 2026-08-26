@@ -812,30 +812,30 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
       </div>
 
       {/* 4. Recent Commit History Timeline with Persistent Expanded Commits, Search & Full History Controls */}
-      <div class="bg-[#11141D] border border-gray-800 rounded-2xl p-6 space-y-4 shadow-xl">
+      <div class="bg-white dark:bg-[#11141D] border border-gray-200 dark:border-gray-800 rounded-2xl p-6 space-y-4 shadow-sm">
         {/* Header with Title and Control Buttons */}
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div class="flex items-center gap-2">
-            <History class="w-4 h-4 text-cyan-400" />
-            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-200">
+            <History class="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-800 dark:text-gray-200">
               Commit History
             </h2>
-            <span class="px-2 py-0.5 bg-[#181D2B] border border-gray-700/60 rounded-full text-[10px] font-mono font-bold text-gray-300">
+            <span class="px-2 py-0.5 bg-gray-100 dark:bg-[#181D2B] border border-gray-200 dark:border-gray-700/60 rounded-full text-[10px] font-mono font-bold text-gray-700 dark:text-gray-300">
               {filteredCommits().length} / {commits().length} Loaded
             </span>
           </div>
 
           <div class="flex items-center gap-2 flex-wrap">
             {/* View Mode Switcher: Git Graph vs List */}
-            <div class="flex items-center bg-[#151926] border border-gray-700/60 rounded-lg p-0.5">
+            <div class="flex items-center bg-gray-100 dark:bg-[#151926] border border-gray-200 dark:border-gray-700/60 rounded-lg p-0.5">
               <button
                 onClick={() =>
                   settingsStore.updateSetting("commitHistoryViewMode", "graph")
                 }
                 class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
                   commitHistoryViewMode() === "graph"
-                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
-                    : "text-gray-400 hover:text-white"
+                    ? "bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-500/40"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 }`}
                 title="View as Interactive Git Graph"
               >
@@ -848,8 +848,8 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                 }
                 class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
                   commitHistoryViewMode() === "list"
-                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
-                    : "text-gray-400 hover:text-white"
+                    ? "bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-500/40"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 }`}
                 title="View as Flat Cards List"
               >
@@ -858,12 +858,12 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
               </button>
             </div>
 
-            <div class="h-4 w-px bg-gray-700 mx-0.5" />
+            <div class="h-4 w-px bg-gray-300 dark:bg-gray-700 mx-0.5" />
 
             {/* Expand All / Collapse All Commits */}
             <button
               onClick={toggleExpandAllCommits}
-              class="px-2.5 py-1 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 rounded-lg text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 cursor-pointer transition-colors"
+              class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-[#151926] dark:hover:bg-[#1E2436] border border-gray-200 dark:border-gray-700/60 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white flex items-center gap-1.5 cursor-pointer transition-colors"
               title={
                 isAllCommitsExpanded()
                   ? "Collapse all expanded commits"
@@ -873,10 +873,10 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
               <Show
                 when={isAllCommitsExpanded()}
                 fallback={
-                  <ChevronsUpDown class="w-3.5 h-3.5 text-indigo-400" />
+                  <ChevronsUpDown class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 }
               >
-                <ChevronsUpDown class="w-3.5 h-3.5 text-amber-400 rotate-90" />
+                <ChevronsUpDown class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 rotate-90" />
               </Show>
               <span>
                 {isAllCommitsExpanded() ? "Collapse All" : "Expand All"}
@@ -884,13 +884,13 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
             </button>
 
             {/* Commit Limit Preset Switcher */}
-            <div class="flex items-center bg-[#151926] border border-gray-700/60 rounded-lg p-0.5 text-[10px] font-mono">
+            <div class="flex items-center bg-gray-100 dark:bg-[#151926] border border-gray-200 dark:border-gray-700/60 rounded-lg p-0.5 text-[10px] font-mono">
               <button
                 onClick={() => repoStore.setCommitLimit(25)}
                 class={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
                   repoStore.commitLimit() === 25
-                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
-                    : "text-gray-400 hover:text-white"
+                    ? "bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-500/40"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
                 25
@@ -899,8 +899,8 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                 onClick={() => repoStore.setCommitLimit(50)}
                 class={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
                   repoStore.commitLimit() === 50
-                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
-                    : "text-gray-400 hover:text-white"
+                    ? "bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-500/40"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
                 50
@@ -909,8 +909,8 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                 onClick={() => repoStore.setCommitLimit(100)}
                 class={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
                   repoStore.commitLimit() === 100
-                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
-                    : "text-gray-400 hover:text-white"
+                    ? "bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-500/40"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
                 100
@@ -919,8 +919,8 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                 onClick={() => repoStore.setCommitLimit(10000)}
                 class={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
                   repoStore.commitLimit() >= 10000
-                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
-                    : "text-gray-400 hover:text-white"
+                    ? "bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-500/40"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 }`}
                 title="Load all historical commits on this branch"
               >
@@ -938,7 +938,7 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
             placeholder="Filter commits by message, author, or SHA..."
             value={commitSearch()}
             onInput={(e) => setCommitSearch(e.currentTarget.value)}
-            class="w-full pl-9 pr-8 py-1.5 bg-[#0D1017] border border-gray-800 rounded-xl text-gray-200 placeholder-gray-500 text-xs font-mono focus:outline-none focus:border-indigo-400 transition-colors"
+            class="w-full pl-9 pr-8 py-1.5 bg-white dark:bg-[#0D1017] border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 text-xs font-mono focus:outline-none focus:border-indigo-400 transition-colors"
           />
           <Show when={commitSearch()}>
             <button
