@@ -7,7 +7,7 @@ import {
   Plus
 } from 'lucide-solid';
 import { TopToolbar } from './components/layout/TopToolbar';
-
+import { LoadingScreen } from './components/layout/LoadingScreen';
 import { StatusBar } from './components/layout/StatusBar';
 import { RepoTree } from './components/repository/RepoTree';
 import { ChangesView } from './components/repository/ChangesView';
@@ -15,17 +15,36 @@ import { OpenRepoModal } from './components/modals/OpenRepoModal';
 import { BranchPicker } from './components/modals/BranchPicker';
 import { PullAllModal } from './components/modals/PullAllModal';
 import { PushReviewModal } from './components/modals/PushReviewModal';
+import { SettingsModal } from './components/modals/SettingsModal';
 import { repoStore } from './store/repoStore';
 import { RepoStatus } from './types/git';
 
 export const App: Component = () => {
+  const [isLoadingApp, setIsLoadingApp] = createSignal<boolean>(true);
+  const [loadingStatus, setLoadingStatus] = createSignal<string>('Initializing Polyrepo Engine...');
   const [isOpenRepoOpen, setIsOpenRepoOpen] = createSignal<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = createSignal<boolean>(false);
   const [branchPickerRepo, setBranchPickerRepo] = createSignal<RepoStatus | null>(null);
+  
+  // Resizers
   const [sidebarWidth, setSidebarWidth] = createSignal<number>(380);
+  const [changesViewHeight, setChangesViewHeight] = createSignal<number>(260);
   const [isDraggingSidebar, setIsDraggingSidebar] = createSignal<boolean>(false);
+  const [isDraggingVertical, setIsDraggingVertical] = createSignal<boolean>(false);
 
-  onMount(() => {
-    void repoStore.loadWorkspace();
+  onMount(async () => {
+    try {
+      setLoadingStatus('Discovering configured repositories...');
+      await repoStore.loadWorkspace();
+      setLoadingStatus('Ready');
+    } catch (err) {
+      console.error('Initialization error:', err);
+    } finally {
+      // Intentional smooth minimum 600ms display to eliminate fast-system white/layout flicker
+      setTimeout(() => {
+        setIsLoadingApp(false);
+      }, 650);
+    }
 
     // Global keyboard shortcut: Ctrl+O to open repo
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -36,12 +55,21 @@ export const App: Component = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
 
-    // Global mouseup for resizer
-    const handleMouseUp = () => setIsDraggingSidebar(false);
+    // Global mouse movements for resizers
+    const handleMouseUp = () => {
+      setIsDraggingSidebar(false);
+      setIsDraggingVertical(false);
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
       if (isDraggingSidebar()) {
-        const newWidth = Math.max(280, Math.min(600, e.clientX));
+        const newWidth = Math.max(260, Math.min(650, e.clientX));
         setSidebarWidth(newWidth);
+      }
+      if (isDraggingVertical()) {
+        const windowHeight = window.innerHeight;
+        const newHeight = Math.max(120, Math.min(550, windowHeight - e.clientY - 24));
+        setChangesViewHeight(newHeight);
       }
     };
 
@@ -53,34 +81,53 @@ export const App: Component = () => {
 
   return (
     <div class="flex flex-col h-screen w-screen bg-carbon-base text-gray-100 font-sans overflow-hidden select-none">
+      {/* Animated Loading Screen */}
+      <LoadingScreen isVisible={isLoadingApp()} statusText={loadingStatus()} />
+
       {/* Top Global Toolbar */}
-      <TopToolbar onOpenRepoClick={() => setIsOpenRepoOpen(true)} />
+      <TopToolbar 
+        onOpenRepoClick={() => setIsOpenRepoOpen(true)} 
+        onSettingsClick={() => setIsSettingsOpen(true)}
+      />
 
       {/* Main Split Layout */}
       <div class="flex flex-1 overflow-hidden">
         {/* Left Sidebar */}
         <div 
           style={{ width: `${sidebarWidth()}px` }}
-          class="flex flex-col border-r border-carbon-border bg-carbon-base flex-shrink-0"
+          class="flex flex-col border-r border-carbon-border bg-carbon-base flex-shrink-0 select-none overflow-hidden"
         >
           {/* Top Half: Repositories List */}
-          <div class="flex-1 overflow-hidden">
+          <div class="flex-1 overflow-hidden min-h-[120px]">
             <RepoTree
               onOpenRepoModal={() => setIsOpenRepoOpen(true)}
               onBranchPickerOpen={(repo) => setBranchPickerRepo(repo)}
             />
           </div>
 
+          {/* Vertical Resizer Divider */}
+          <div
+            onMouseDown={() => setIsDraggingVertical(true)}
+            class="h-1 hover:h-1.5 bg-carbon-border hover:bg-git-indigo cursor-row-resize transition-all z-10 flex-shrink-0 flex items-center justify-center group"
+            title="Drag to resize Source Control view"
+          >
+            <div class="w-8 h-0.5 bg-gray-600 group-hover:bg-git-indigo rounded-full opacity-60" />
+          </div>
+
           {/* Bottom Half: Changes View */}
-          <div class="h-64 flex-shrink-0">
+          <div 
+            style={{ height: `${changesViewHeight()}px` }}
+            class="flex-shrink-0 overflow-hidden"
+          >
             <ChangesView />
           </div>
         </div>
 
-        {/* Resizer Divider */}
+        {/* Horizontal Resizer Divider */}
         <div
           onMouseDown={() => setIsDraggingSidebar(true)}
-          class="w-1 hover:w-1.5 bg-carbon-border hover:bg-git-indigo cursor-col-resize transition-all z-10"
+          class="w-1 hover:w-1.5 bg-carbon-border hover:bg-git-indigo cursor-col-resize transition-all z-10 flex-shrink-0"
+          title="Drag to resize sidebar width"
         />
 
         {/* Right Workspace Main Panel */}
@@ -205,6 +252,11 @@ export const App: Component = () => {
         repo={branchPickerRepo()}
         isOpen={branchPickerRepo() !== null}
         onClose={() => setBranchPickerRepo(null)}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen()}
+        onClose={() => setIsSettingsOpen(false)}
       />
 
       <PullAllModal />

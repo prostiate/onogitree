@@ -14,6 +14,7 @@ import { batchStore } from '../../store/batchStore';
 
 interface TopToolbarProps {
   onOpenRepoClick: () => void;
+  onSettingsClick: () => void;
 }
 
 export const TopToolbar: Component<TopToolbarProps> = (props) => {
@@ -97,8 +98,9 @@ export const TopToolbar: Component<TopToolbarProps> = (props) => {
         </button>
 
         <button
+          onClick={props.onSettingsClick}
           class="p-1 hover:bg-carbon-hover border border-carbon-border rounded text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
-          title="Settings"
+          title="Open Preferences & Settings"
         >
           <Settings class="w-3.5 h-3.5" />
         </button>
@@ -106,3 +108,4 @@ export const TopToolbar: Component<TopToolbarProps> = (props) => {
     </header>
   );
 };
+
