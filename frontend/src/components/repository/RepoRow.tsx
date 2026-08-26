@@ -101,138 +101,143 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
       <div
         onClick={props.onSelect}
         onContextMenu={handleContextMenu}
-        class={`group px-3 py-2.5 border-b border-carbon-border cursor-pointer select-none transition-colors flex items-center justify-between text-xs ${
+        class={`group px-3 py-2 border-b border-carbon-border/70 cursor-pointer select-none transition-all flex flex-col gap-1 text-xs ${
           props.isSelected
-            ? 'bg-carbon-elevated border-l-2 border-l-indigo-400'
-            : 'hover:bg-carbon-surface bg-carbon-base'
+            ? 'bg-carbon-elevated border-l-2 border-l-indigo-400 shadow-sm'
+            : 'hover:bg-[#151924] bg-carbon-base'
         }`}
       >
-        {/* Left side: Pin, Name, Branch Pill */}
-        <div class="flex items-center gap-2.5 min-w-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              void repoStore.togglePin(props.repo.id);
-            }}
-            class={`p-0.5 rounded transition-opacity ${
-              props.repo.isPinned
-                ? 'text-indigo-400 opacity-100'
-                : 'text-gray-500 opacity-0 group-hover:opacity-100 hover:text-gray-300'
-            }`}
-            title={props.repo.isPinned ? 'Unpin repository' : 'Pin repository to top'}
-          >
-            <Pin class="w-3.5 h-3.5 rotate-45" />
-          </button>
+        {/* Line 1: Main Header (Pin, Repo Name, Status Indicators, Actions) */}
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                void repoStore.togglePin(props.repo.id);
+              }}
+              class={`p-0.5 rounded transition-opacity ${
+                props.repo.isPinned
+                  ? 'text-indigo-400 opacity-100'
+                  : 'text-gray-500 opacity-0 group-hover:opacity-100 hover:text-gray-300'
+              }`}
+              title={props.repo.isPinned ? 'Unpin repository' : 'Pin repository to top'}
+            >
+              <Pin class="w-3.5 h-3.5 rotate-45" />
+            </button>
 
-          <span class="font-semibold text-gray-100 truncate text-[12.5px]" title={props.repo.path}>
-            {props.repo.name}
-          </span>
+            <span class="font-bold text-gray-100 truncate text-[13px] tracking-tight" title={props.repo.path}>
+              {props.repo.name}
+            </span>
 
-          {/* High-Contrast, Noticeable Branch Pill */}
+            {/* Dirty indicator */}
+            <Show when={props.repo.isDirty}>
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0" title="Uncommitted changes" />
+            </Show>
+          </div>
+
+          {/* Right side of Line 1: Ahead/Behind / Conflict / Hover Action Buttons */}
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            {/* Real-time batch progress state */}
+            <Show when={batchEvent()}>
+              {(event) => (
+                <Show when={event().status === 'running'}>
+                  <span title={event().message}>
+                    <RefreshCw class="w-3 h-3 text-cyan-400 animate-spin" />
+                  </span>
+                </Show>
+              )}
+            </Show>
+
+            {/* Ahead / Behind Counters */}
+            <Show when={props.repo.aheadCount > 0 || props.repo.behindCount > 0}>
+              <div class="flex items-center gap-1 font-mono text-[10.5px] font-bold tabular-nums px-1.5 py-0.2 bg-carbon-surface border border-carbon-border/80 rounded">
+                <Show when={props.repo.aheadCount > 0}>
+                  <span class="text-emerald-400" title={`${props.repo.aheadCount} unpushed commits`}>
+                    +{props.repo.aheadCount}↑
+                  </span>
+                </Show>
+                <Show when={props.repo.behindCount > 0}>
+                  <span class="text-amber-400" title={`${props.repo.behindCount} commits behind`}>
+                    ~{props.repo.behindCount}↓
+                  </span>
+                </Show>
+              </div>
+            </Show>
+
+            {/* Conflict Badge */}
+            <Show when={props.repo.hasConflicts || batchEvent()?.status === 'conflict'}>
+              <span class="flex items-center gap-0.5 px-1.5 py-0.2 bg-rose-500/20 border border-rose-500/40 text-rose-400 rounded text-[9.5px] font-bold animate-pulse">
+                <AlertTriangle class="w-2.5 h-2.5" />
+                <span>Conflict</span>
+              </span>
+            </Show>
+
+            {/* Auth Required Badge */}
+            <Show when={batchEvent()?.status === 'auth_required'}>
+              <span class="flex items-center gap-0.5 px-1.5 py-0.2 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded text-[9.5px] font-bold">
+                <Key class="w-2.5 h-2.5" />
+                <span>Auth</span>
+              </span>
+            </Show>
+
+            {/* Quick action buttons on hover */}
+            <div class="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void repoStore.refreshRepo(props.repo.path);
+                }}
+                class="p-1 hover:bg-carbon-border rounded text-gray-400 hover:text-gray-200"
+                title="Refresh repository"
+              >
+                <RefreshCw class="w-3 h-3" />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void repoStore.removeRepository(props.repo.id);
+                }}
+                class="p-1 hover:bg-carbon-border rounded text-gray-500 hover:text-rose-400"
+                title="Remove repository"
+              >
+                <X class="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Line 2: Branch Badge (Left) + Last Fetch & AutoFetch (Right) */}
+        <div class="flex items-center justify-between gap-2 pl-5">
+          {/* Noticeable, High-Contrast Branch Pill */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               props.onBranchClick();
             }}
-            class="flex items-center gap-1.5 px-2 py-0.5 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 rounded text-[11.5px] font-mono text-indigo-300 font-bold transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
-            title="Click to switch or create branch"
+            class="flex items-center gap-1.5 px-2 py-0.5 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/35 rounded text-[11px] font-mono text-indigo-300 font-bold transition-all cursor-pointer shadow-sm hover:scale-[1.02] max-w-[190px]"
+            title="Click to switch branch"
           >
-            <GitBranch class="w-3.5 h-3.5 text-indigo-400 stroke-[2.5]" />
-            <span class="truncate max-w-[130px]">{props.repo.currentBranch}</span>
-            <Show when={props.repo.isDirty}>
-              <span class="text-amber-400 font-black text-sm" title="Uncommitted changes">*</span>
-            </Show>
-          </button>
-        </div>
-
-        {/* Right side: Badges, Last Fetch, Actions */}
-        <div class="flex items-center gap-2 flex-shrink-0">
-          {/* Real-time batch progress state */}
-          <Show when={batchEvent()}>
-            {(event) => (
-              <Show when={event().status === 'running'}>
-                <span title={event().message}>
-                  <RefreshCw class="w-3.5 h-3.5 text-git-cyan animate-spin" />
-                </span>
-              </Show>
-            )}
-          </Show>
-
-          {/* Conflict Badge */}
-          <Show when={props.repo.hasConflicts || batchEvent()?.status === 'conflict'}>
-            <span class="flex items-center gap-0.5 px-1.5 py-0.5 bg-git-crimson/20 border border-git-crimson/40 text-git-crimson rounded text-[10px] font-bold animate-pulse">
-              <AlertTriangle class="w-2.5 h-2.5" />
-              <span>Conflict</span>
-            </span>
-          </Show>
-
-          {/* Auth Required Badge */}
-          <Show when={batchEvent()?.status === 'auth_required'}>
-            <span class="flex items-center gap-0.5 px-1.5 py-0.5 bg-git-amber/20 border border-git-amber/40 text-git-amber rounded text-[10px] font-bold">
-              <Key class="w-2.5 h-2.5" />
-              <span>Auth</span>
-            </span>
-          </Show>
-
-          {/* Ahead / Behind Counters */}
-          <Show when={props.repo.aheadCount > 0 || props.repo.behindCount > 0}>
-            <div class="flex items-center gap-1 font-mono text-[10.5px] font-bold tabular-nums">
-              <Show when={props.repo.aheadCount > 0}>
-                <span class="text-git-emerald" title={`${props.repo.aheadCount} unpushed commits`}>
-                  +{props.repo.aheadCount}
-                </span>
-              </Show>
-              <Show when={props.repo.behindCount > 0}>
-                <span class="text-git-amber" title={`${props.repo.behindCount} commits behind upstream`}>
-                  ~{props.repo.behindCount}
-                </span>
-              </Show>
-            </div>
-          </Show>
-
-          {/* Last Fetched timestamp */}
-          <span class="text-[10px] text-gray-400 font-mono hidden sm:inline" title="Last remote fetch">
-            {props.repo.lastFetchedAt}
-          </span>
-
-          {/* Auto Fetch Toggle icon */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              void repoStore.toggleAutoFetch(props.repo.id);
-            }}
-            class={`p-0.5 rounded transition-colors ${
-              props.repo.autoFetchEnabled
-                ? 'text-cyan-400 opacity-90 hover:opacity-100'
-                : 'text-gray-600 opacity-40 hover:opacity-80'
-            }`}
-            title={props.repo.autoFetchEnabled ? 'Auto-fetch enabled' : 'Auto-fetch disabled'}
-          >
-            <Radio class="w-3.5 h-3.5" />
+            <GitBranch class="w-3 h-3 text-indigo-400 flex-shrink-0 stroke-[2.5]" />
+            <span class="truncate">{props.repo.currentBranch}</span>
           </button>
 
-          {/* Quick action buttons on hover */}
-          <div class="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+          {/* Metadata & Status */}
+          <div class="flex items-center gap-2 text-[10px] font-mono text-gray-400">
+            <span class="truncate opacity-75">{props.repo.lastFetchedAt}</span>
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                void repoStore.refreshRepo(props.repo.path);
+                void repoStore.toggleAutoFetch(props.repo.id);
               }}
-              class="p-0.5 hover:bg-carbon-border rounded text-gray-400 hover:text-gray-200"
-              title="Refresh this repository"
+              class={`p-0.5 rounded transition-colors ${
+                props.repo.autoFetchEnabled
+                  ? 'text-cyan-400 opacity-90 hover:opacity-100'
+                  : 'text-gray-600 opacity-40 hover:opacity-80'
+              }`}
+              title={props.repo.autoFetchEnabled ? 'Auto-fetch enabled' : 'Auto-fetch disabled'}
             >
-              <RefreshCw class="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                void repoStore.removeRepository(props.repo.id);
-              }}
-              class="p-0.5 hover:bg-carbon-border rounded text-gray-500 hover:text-rose-400"
-              title="Remove repository from workspace"
-            >
-              <X class="w-3.5 h-3.5" />
+              <Radio class="w-3 h-3" />
             </button>
           </div>
         </div>
@@ -253,4 +258,3 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
     </>
   );
 };
-

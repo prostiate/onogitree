@@ -1,16 +1,20 @@
-import { Component, createSignal, For, Show } from 'solid-js';
+import { Component, createSignal, createMemo, For, Show } from 'solid-js';
 import { 
   Check, 
   Plus, 
   Minus, 
-  Archive, 
   ChevronDown,
+  ChevronRight,
   RefreshCw,
   FileCode,
+  Folder,
   FolderOpen,
   Copy,
   Trash2,
-  EyeOff
+  EyeOff,
+  List,
+  FolderTree,
+  MoreHorizontal
 } from 'lucide-solid';
 
 
@@ -18,11 +22,17 @@ import { repoStore } from '../../store/repoStore';
 import { batchStore } from '../../store/batchStore';
 import { FileStatus } from '../../types/git';
 import { ContextMenu, MenuItem } from '../common/ContextMenu';
+import { buildFileTree, sortFiles, FileTreeNode } from '../../utils/fileTree';
 
 export const ChangesView: Component = () => {
   const [commitMessage, setCommitMessage] = createSignal<string>('');
   const [isAmending, setIsAmending] = createSignal<boolean>(false);
   const [showCommitMenu, setShowCommitMenu] = createSignal<boolean>(false);
+  const [showOptionsMenu, setShowOptionsMenu] = createSignal<boolean>(false);
+  const [viewMode, setViewMode] = createSignal<'list' | 'tree'>('tree');
+  const [sortBy, setSortBy] = createSignal<'path' | 'name' | 'status'>('path');
+  const [collapsedFolders, setCollapsedFolders] = createSignal<Record<string, boolean>>({});
+
   const [selectedContextMenu, setSelectedContextMenu] = createSignal<{
     x: number;
     y: number;
@@ -30,10 +40,21 @@ export const ChangesView: Component = () => {
   } | null>(null);
 
   const activeRepo = () => repoStore.selectedRepo();
-  const files = () => activeRepo()?.files || [];
+  const rawFiles = () => activeRepo()?.files || [];
 
-  const stagedFiles = () => files().filter((f) => f.staged);
-  const unstagedFiles = () => files().filter((f) => !f.staged);
+  const sortedFiles = createMemo(() => sortFiles(rawFiles(), sortBy()));
+  const stagedFiles = createMemo(() => sortedFiles().filter((f) => f.staged));
+  const unstagedFiles = createMemo(() => sortedFiles().filter((f) => !f.staged));
+
+  const stagedTree = createMemo(() => buildFileTree(stagedFiles()));
+  const unstagedTree = createMemo(() => buildFileTree(unstagedFiles()));
+
+  const toggleFolder = (folderId: string) => {
+    setCollapsedFolders((prev) => ({
+      ...prev,
+      [folderId]: !prev[folderId],
+    }));
+  };
 
   const handleCommit = async (amend: boolean = false) => {
     const repo = activeRepo();
@@ -160,11 +181,96 @@ export const ChangesView: Component = () => {
     ];
   };
 
+  // Render a recursive Tree Node
+  const renderTreeNode = (node: FileTreeNode, isStagedSection: boolean, depth: number = 0) => {
+    const isFolderCollapsed = () => collapsedFolders()[node.id] || false;
+
+    if (node.isFolder) {
+      return (
+        <div class="flex flex-col">
+          <div
+            onClick={() => toggleFolder(node.id)}
+            style={{ 'padding-left': `${depth * 12 + 6}px` }}
+            class="flex items-center gap-1.5 py-1 hover:bg-[#1A1F2C] rounded text-gray-300 font-mono text-[11.5px] cursor-pointer select-none transition-colors"
+          >
+            <Show
+              when={!isFolderCollapsed()}
+              fallback={<ChevronRight class="w-3 h-3 text-gray-500 flex-shrink-0" />}
+            >
+              <ChevronDown class="w-3 h-3 text-gray-500 flex-shrink-0" />
+            </Show>
+            <Folder class="w-3.5 h-3.5 text-indigo-400/80 flex-shrink-0" />
+            <span class="truncate font-semibold text-gray-200">{node.name}</span>
+          </div>
+
+          <Show when={!isFolderCollapsed()}>
+            <div class="flex flex-col">
+              <For each={node.children}>
+                {(child) => renderTreeNode(child, isStagedSection, depth + 1)}
+              </For>
+            </div>
+          </Show>
+        </div>
+      );
+    }
+
+    if (!node.file) return null;
+    const file = node.file;
+    const repo = activeRepo();
+
+    return (
+      <div
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setSelectedContextMenu({ x: e.clientX, y: e.clientY, file });
+        }}
+        onDblClick={() => repo && repoStore.openPath(`${repo.path}/${file.path}`)}
+        style={{ 'padding-left': `${depth * 12 + 18}px` }}
+        class="group flex items-center justify-between py-1 pr-2 hover:bg-[#1A1F2C] border-b border-carbon-border/30 rounded font-mono text-[11.5px] cursor-pointer transition-colors"
+      >
+        <div class="flex items-center gap-1.5 truncate">
+          {getStatusBadge(file.status)}
+          <span class="text-gray-200 truncate">{node.name}</span>
+        </div>
+
+        <div class="flex items-center gap-1">
+          <Show
+            when={isStagedSection}
+            fallback={
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (repo) void repoStore.stageFiles(repo.path, [file.path]);
+                }}
+                class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-carbon-elevated rounded text-gray-400 hover:text-emerald-400"
+                title="Stage file"
+              >
+                <Plus class="w-3.5 h-3.5" />
+              </button>
+            }
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (repo) void repoStore.unstageFiles(repo.path, [file.path]);
+              }}
+              class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-carbon-elevated rounded text-gray-400 hover:text-amber-400"
+              title="Unstage file"
+            >
+              <Minus class="w-3.5 h-3.5" />
+            </button>
+          </Show>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div class="flex flex-col h-full bg-carbon-surface border-t border-carbon-border select-none text-xs">
       {/* Header */}
       <div class="px-3 py-2 bg-carbon-elevated border-b border-carbon-border flex items-center justify-between">
-        <span class="font-semibold text-gray-200 tracking-wider text-[11px] uppercase flex items-center gap-1.5 truncate">
+        <span class="font-bold text-gray-200 tracking-wider text-[11px] uppercase flex items-center gap-1.5 truncate">
           <span>Source Control</span>
           <Show when={activeRepo()}>
             {(repo) => <span class="text-indigo-300 font-bold lowercase font-mono">({repo().name})</span>}
@@ -174,6 +280,21 @@ export const ChangesView: Component = () => {
         <Show when={activeRepo()}>
           {(repo) => (
             <div class="flex items-center gap-1">
+              {/* Toggle Tree / List View */}
+              <button
+                onClick={() => setViewMode(viewMode() === 'tree' ? 'list' : 'tree')}
+                class={`p-1 rounded transition-colors cursor-pointer ${
+                  viewMode() === 'tree'
+                    ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-carbon-hover'
+                }`}
+                title={viewMode() === 'tree' ? 'Switch to List View' : 'Switch to Tree View'}
+              >
+                <Show when={viewMode() === 'tree'} fallback={<List class="w-3.5 h-3.5" />}>
+                  <FolderTree class="w-3.5 h-3.5" />
+                </Show>
+              </button>
+
               <button
                 onClick={() => repoStore.stageFiles(repo().path, [])}
                 class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-emerald-400 transition-colors cursor-pointer"
@@ -190,12 +311,89 @@ export const ChangesView: Component = () => {
                 <Minus class="w-3.5 h-3.5" />
               </button>
 
-              <button
-                class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
-                title="Stash Changes"
-              >
-                <Archive class="w-3.5 h-3.5" />
-              </button>
+              {/* More Options Dropdown */}
+              <div class="relative">
+                <button
+                  onClick={() => setShowOptionsMenu(!showOptionsMenu())}
+                  class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
+                  title="View & Sort Options"
+                >
+                  <MoreHorizontal class="w-3.5 h-3.5" />
+                </button>
+
+                <Show when={showOptionsMenu()}>
+                  <div class="absolute right-0 top-7 w-48 bg-[#141721] border border-gray-700/80 rounded-xl shadow-2xl py-1 z-40 text-xs backdrop-blur-md">
+                    <button
+                      onClick={() => {
+                        setViewMode('list');
+                        setShowOptionsMenu(false);
+                      }}
+                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
+                    >
+                      <span>View as List</span>
+                      <Show when={viewMode() === 'list'}><span class="text-indigo-400">✓</span></Show>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setViewMode('tree');
+                        setShowOptionsMenu(false);
+                      }}
+                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
+                    >
+                      <span>View as Tree</span>
+                      <Show when={viewMode() === 'tree'}><span class="text-indigo-400">✓</span></Show>
+                    </button>
+
+                    <div class="my-1 border-t border-gray-800" />
+
+                    <button
+                      onClick={() => {
+                        setSortBy('path');
+                        setShowOptionsMenu(false);
+                      }}
+                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
+                    >
+                      <span>Sort by Path</span>
+                      <Show when={sortBy() === 'path'}><span class="text-indigo-400">✓</span></Show>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setSortBy('name');
+                        setShowOptionsMenu(false);
+                      }}
+                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
+                    >
+                      <span>Sort by Name</span>
+                      <Show when={sortBy() === 'name'}><span class="text-indigo-400">✓</span></Show>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setSortBy('status');
+                        setShowOptionsMenu(false);
+                      }}
+                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
+                    >
+                      <span>Sort by Status</span>
+                      <Show when={sortBy() === 'status'}><span class="text-indigo-400">✓</span></Show>
+                    </button>
+
+                    <div class="my-1 border-t border-gray-800" />
+
+                    <button
+                      onClick={() => {
+                        void repoStore.refreshRepo(repo().path);
+                        setShowOptionsMenu(false);
+                      }}
+                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] text-gray-200 cursor-pointer"
+                    >
+                      Refresh Changes
+                    </button>
+                  </div>
+                </Show>
+              </div>
             </div>
           )}
         </Show>
@@ -215,7 +413,7 @@ export const ChangesView: Component = () => {
             <Show when={repo().aheadCount > 0 || repo().behindCount > 0}>
               <button
                 onClick={() => batchStore.setIsPushModalOpen(true)}
-                class="w-full flex items-center justify-center gap-2 py-1.5 px-3 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-semibold rounded text-xs transition-colors cursor-pointer"
+                class="w-full flex items-center justify-center gap-2 py-1.5 px-3 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-semibold rounded text-xs transition-colors cursor-pointer shadow-sm"
                 title="Synchronize and push outgoing commits"
               >
                 <RefreshCw class="w-3.5 h-3.5" />
@@ -279,7 +477,7 @@ export const ChangesView: Component = () => {
               </div>
             </div>
 
-            {/* Changed Files Lists */}
+            {/* Changed Files Lists (Tree or List Mode) */}
             <div class="flex-1 overflow-y-auto space-y-3 mt-1 pr-1">
               {/* Staged Section */}
               <Show when={stagedFiles().length > 0}>
@@ -293,36 +491,48 @@ export const ChangesView: Component = () => {
                       Unstage All
                     </button>
                   </div>
-                  <div class="space-y-0.5">
-                    <For each={stagedFiles()}>
-                      {(file) => (
-                        <div
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setSelectedContextMenu({ x: e.clientX, y: e.clientY, file });
-                          }}
-                          onDblClick={() => repoStore.openPath(`${repo().path}/${file.path}`)}
-                          class="group flex items-center justify-between px-2 py-1.5 bg-carbon-base hover:bg-[#1A1F2C] border border-carbon-border/50 rounded font-mono text-[11.5px] cursor-pointer transition-colors"
-                        >
-                          <div class="flex items-center gap-2 truncate">
-                            {getStatusBadge(file.status)}
-                            <span class="text-gray-200 truncate">{file.path}</span>
-                          </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void repoStore.unstageFiles(repo().path, [file.path]);
-                            }}
-                            class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-carbon-elevated rounded text-gray-400 hover:text-amber-400"
-                            title="Unstage file"
-                          >
-                            <Minus class="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </For>
-                  </div>
+
+                  <Show
+                    when={viewMode() === 'tree'}
+                    fallback={
+                      <div class="space-y-0.5">
+                        <For each={stagedFiles()}>
+                          {(file) => (
+                            <div
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedContextMenu({ x: e.clientX, y: e.clientY, file });
+                              }}
+                              onDblClick={() => repoStore.openPath(`${repo().path}/${file.path}`)}
+                              class="group flex items-center justify-between px-2 py-1.5 bg-carbon-base hover:bg-[#1A1F2C] border border-carbon-border/50 rounded font-mono text-[11.5px] cursor-pointer transition-colors"
+                            >
+                              <div class="flex items-center gap-2 truncate">
+                                {getStatusBadge(file.status)}
+                                <span class="text-gray-200 truncate">{file.path}</span>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void repoStore.unstageFiles(repo().path, [file.path]);
+                                }}
+                                class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-carbon-elevated rounded text-gray-400 hover:text-amber-400"
+                                title="Unstage file"
+                              >
+                                <Minus class="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </For>
+                      </div>
+                    }
+                  >
+                    <div class="space-y-0.5 bg-carbon-base/50 p-1 rounded-lg border border-carbon-border/40">
+                      <For each={stagedTree()}>
+                        {(node) => renderTreeNode(node, true)}
+                      </For>
+                    </div>
+                  </Show>
                 </div>
               </Show>
 
@@ -339,6 +549,7 @@ export const ChangesView: Component = () => {
                     </button>
                   </Show>
                 </div>
+
                 <Show
                   when={unstagedFiles().length > 0}
                   fallback={
@@ -347,38 +558,49 @@ export const ChangesView: Component = () => {
                     </div>
                   }
                 >
-                  <div class="space-y-0.5">
-                    <For each={unstagedFiles()}>
-                      {(file) => (
-                        <div
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setSelectedContextMenu({ x: e.clientX, y: e.clientY, file });
-                          }}
-                          onDblClick={() => repoStore.openPath(`${repo().path}/${file.path}`)}
-                          class="group flex items-center justify-between px-2 py-1.5 bg-carbon-base hover:bg-[#1A1F2C] border border-carbon-border/50 rounded font-mono text-[11.5px] cursor-pointer transition-colors"
-                        >
-                          <div class="flex items-center gap-2 truncate">
-                            {getStatusBadge(file.status)}
-                            <span class="text-gray-200 truncate">{file.path}</span>
-                          </div>
-                          <div class="flex items-center gap-1">
-                            <button
-                              onClick={(e) => {
+                  <Show
+                    when={viewMode() === 'tree'}
+                    fallback={
+                      <div class="space-y-0.5">
+                        <For each={unstagedFiles()}>
+                          {(file) => (
+                            <div
+                              onContextMenu={(e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
-                                void repoStore.stageFiles(repo().path, [file.path]);
+                                setSelectedContextMenu({ x: e.clientX, y: e.clientY, file });
                               }}
-                              class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-carbon-elevated rounded text-gray-400 hover:text-emerald-400"
-                              title="Stage file"
+                              onDblClick={() => repoStore.openPath(`${repo().path}/${file.path}`)}
+                              class="group flex items-center justify-between px-2 py-1.5 bg-carbon-base hover:bg-[#1A1F2C] border border-carbon-border/50 rounded font-mono text-[11.5px] cursor-pointer transition-colors"
                             >
-                              <Plus class="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </For>
-                  </div>
+                              <div class="flex items-center gap-2 truncate">
+                                {getStatusBadge(file.status)}
+                                <span class="text-gray-200 truncate">{file.path}</span>
+                              </div>
+                              <div class="flex items-center gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void repoStore.stageFiles(repo().path, [file.path]);
+                                  }}
+                                  class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-carbon-elevated rounded text-gray-400 hover:text-emerald-400"
+                                  title="Stage file"
+                                >
+                                  <Plus class="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </For>
+                      </div>
+                    }
+                  >
+                    <div class="space-y-0.5 bg-carbon-base/50 p-1 rounded-lg border border-carbon-border/40">
+                      <For each={unstagedTree()}>
+                        {(node) => renderTreeNode(node, false)}
+                      </For>
+                    </div>
+                  </Show>
                 </Show>
               </div>
             </div>
