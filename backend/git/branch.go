@@ -127,15 +127,16 @@ func (s *BranchService) GetFileDiff(ctx context.Context, repoPath string, filePa
 	return out, nil
 }
 
-// GetRecentCommits returns the most recent commits on HEAD.
+// GetRecentCommits returns the most recent commits on HEAD. If limit <= 0, defaults to 25.
 func (s *BranchService) GetRecentCommits(ctx context.Context, repoPath string, limit int) ([]CommitSummary, error) {
 	if limit <= 0 {
-		limit = 10
+		limit = 25
 	}
 	out, err := s.runner.Run(ctx, repoPath, "log", fmt.Sprintf("-n%d", limit), "--pretty=format:%H%x00%h%x00%an%x00%ae%x00%cr%x00%s%x00%D")
 	if err != nil {
 		return []CommitSummary{}, nil
 	}
+
 
 	commits := make([]CommitSummary, 0)
 	lines := strings.Split(out, "\n")

@@ -215,9 +215,15 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
                   void repoStore.refreshRepo(props.repo.path);
                 }}
                 class="p-1 hover:bg-carbon-border rounded text-gray-400 hover:text-gray-200"
-                title="Refresh repository"
+                title="Refresh repository status and logs"
               >
-                <RefreshCw class="w-3 h-3" />
+                <RefreshCw
+                  class={`w-3 h-3 ${
+                    repoStore.isRefreshingRepo(props.repo.path)
+                      ? "animate-spin text-cyan-400"
+                      : ""
+                  }`}
+                />
               </button>
 
               <button

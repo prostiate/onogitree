@@ -23,6 +23,8 @@ import {
   FolderOpen,
   ChevronsUpDown,
   FileDiff,
+  Search,
+  X,
 } from "lucide-solid";
 import { repoStore } from "../../store/repoStore";
 import { settingsStore } from "../../store/settingsStore";
@@ -51,21 +53,21 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
   const [expandedFolders, setExpandedFolders] = createSignal<Set<string>>(
     new Set<string>(),
   );
+  const [uncommittedExpandedFolders, setUncommittedExpandedFolders] =
+    createSignal<Set<string>>(new Set<string>());
+  const [commitSearch, setCommitSearch] = createSignal<string>("");
 
   const commits = () => repoStore.recentCommits();
   const files = () => props.repo.files || [];
-  const selectedCommitHash = () => repoStore.expandedCommitHash();
-  const commitDetail = () => repoStore.selectedCommitDetail();
-  const isLoadingDetail = () => repoStore.isLoadingCommitDetail();
+  const expandedCommitHashes = () => repoStore.expandedCommitHashes();
   const commitFilesViewMode = () =>
     settingsStore.settings().commitFilesViewMode || "tree";
 
+  const uncommittedChangesViewMode = () =>
+    settingsStore.settings().uncommittedChangesViewMode || "tree";
+
   const handleCommitClick = (commit: CommitSummary) => {
-    if (selectedCommitHash() === commit.hash) {
-      repoStore.setExpandedCommit(null);
-    } else {
-      repoStore.setExpandedCommit(commit.hash);
-    }
+    void repoStore.toggleCommitExpanded(commit.hash);
   };
 
   const handleCommitContextMenu = (e: MouseEvent, commit: CommitSummary) => {
@@ -80,6 +82,54 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
     setTimeout(() => setCopiedHash(null), 2000);
   };
 
+  // Filtered Commits
+  const filteredCommits = createMemo(() => {
+    const q = commitSearch().toLowerCase().trim();
+    const list = commits();
+    if (!q) return list;
+    return list.filter(
+      (c) =>
+        c.subject.toLowerCase().includes(q) ||
+        c.authorName.toLowerCase().includes(q) ||
+        c.shortHash.toLowerCase().includes(q) ||
+        c.hash.toLowerCase().includes(q) ||
+        (c.refs && c.refs.toLowerCase().includes(q)),
+    );
+  });
+
+  const isAllCommitsExpanded = () => {
+    const visible = filteredCommits();
+    if (visible.length === 0) return false;
+    const expanded = expandedCommitHashes();
+    return visible.every((c) => expanded.has(c.hash));
+  };
+
+  const toggleExpandAllCommits = () => {
+    const visible = filteredCommits();
+    if (isAllCommitsExpanded()) {
+      repoStore.collapseAllCommits();
+    } else {
+      void repoStore.expandAllCommits(visible.map((c) => c.hash));
+    }
+  };
+
+  // Uncommitted tree & folder handling
+  const uncommittedFilesTree = createMemo(() => {
+    return buildGenericTree(files());
+  });
+
+  const toggleUncommittedFolder = (folderId: string) => {
+    setUncommittedExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+  };
+
   const toggleFolder = (folderId: string) => {
     setExpandedFolders((prev) => {
       const next = new Set(prev);
@@ -92,18 +142,12 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
     });
   };
 
-  const commitFilesTree = createMemo(() => {
-    const detail = commitDetail();
-    if (!detail || !detail.files) return [];
-    return buildGenericTree(detail.files);
-  });
-
-  // Collect all folder IDs from the tree
-  const getAllFolderIds = (
-    nodes: GenericTreeNode<CommitFileChange>[],
+  // Collect all folder IDs from generic tree
+  const getAllFolderIds = <T extends { path: string }>(
+    nodes: GenericTreeNode<T>[],
   ): string[] => {
     const ids: string[] = [];
-    const traverse = (list: GenericTreeNode<CommitFileChange>[]) => {
+    const traverse = (list: GenericTreeNode<T>[]) => {
       for (const node of list) {
         if (node.isFolder) {
           ids.push(node.id);
@@ -115,8 +159,21 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
     return ids;
   };
 
-  const toggleExpandAllFolders = () => {
-    const allIds = getAllFolderIds(commitFilesTree());
+  const toggleExpandAllUncommittedFolders = () => {
+    const allIds = getAllFolderIds(uncommittedFilesTree());
+    const current = uncommittedExpandedFolders();
+    const allExpanded = allIds.every((id) => current.has(id));
+
+    if (allExpanded) {
+      setUncommittedExpandedFolders(new Set<string>());
+    } else {
+      setUncommittedExpandedFolders(new Set(allIds));
+    }
+  };
+
+  const toggleExpandAllCommitFolders = (filesList: CommitFileChange[]) => {
+    const tree = buildGenericTree(filesList);
+    const allIds = getAllFolderIds(tree);
     const current = expandedFolders();
     const allExpanded = allIds.every((id) => current.has(id));
 
@@ -232,14 +289,106 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
     }
   };
 
+  // Recursive Tree Node Renderer for Uncommitted Active Changes
+  const renderUncommittedTreeNode = (
+    node: GenericTreeNode<FileStatus>,
+    depth: number = 0,
+  ) => {
+    const isFolder = node.isFolder;
+    const isExpanded = () =>
+      uncommittedExpandedFolders().has(node.id) ||
+      (uncommittedExpandedFolders().size === 0 && depth === 0);
+
+    if (isFolder) {
+      return (
+        <div class="select-none">
+          <div
+            onClick={() => toggleUncommittedFolder(node.id)}
+            class="flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#151926] text-gray-300 hover:text-white cursor-pointer text-xs font-mono transition-colors"
+            style={{ "padding-left": `${depth * 14 + 12}px` }}
+          >
+            <Show
+              when={isExpanded()}
+              fallback={<ChevronRight class="w-3.5 h-3.5 text-gray-500" />}
+            >
+              <ChevronDown class="w-3.5 h-3.5 text-indigo-400" />
+            </Show>
+            <Show
+              when={isExpanded()}
+              fallback={<Folder class="w-3.5 h-3.5 text-amber-400/80" />}
+            >
+              <FolderOpen class="w-3.5 h-3.5 text-amber-400" />
+            </Show>
+            <span class="font-semibold text-gray-300">{node.name}</span>
+          </div>
+
+          <Show when={isExpanded()}>
+            <For each={node.children}>
+              {(child) => renderUncommittedTreeNode(child, depth + 1)}
+            </For>
+          </Show>
+        </div>
+      );
+    }
+
+    const file = node.item!;
+    return (
+      <div
+        onClick={() => repoStore.selectFileForDiff(file.path, file.staged)}
+        class="group flex items-center justify-between px-3 py-1.5 hover:bg-[#161B26] text-gray-300 hover:text-white cursor-pointer text-xs font-mono transition-colors"
+        style={{ "padding-left": `${depth * 14 + 26}px` }}
+      >
+        <div class="flex items-center gap-2.5 min-w-0">
+          {getStatusBadge(file.status)}
+          <span class="truncate text-gray-200 group-hover:text-indigo-300">
+            {node.name}
+          </span>
+        </div>
+
+        <div class="flex items-center gap-2 flex-shrink-0 mr-1">
+          <span class="text-[11px] text-gray-500 font-mono opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+            <FileCode class="w-3 h-3 text-indigo-400" />
+            <span>Inspect Diff</span>
+          </span>
+
+          <Show
+            when={file.staged}
+            fallback={
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void repoStore.stageFiles(props.repo.path, [file.path]);
+                }}
+                class="p-1 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-400 rounded transition-colors"
+                title="Stage File"
+              >
+                <Plus class="w-3.5 h-3.5" />
+              </button>
+            }
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                void repoStore.unstageFiles(props.repo.path, [file.path]);
+              }}
+              class="p-1 hover:bg-amber-500/20 text-gray-400 hover:text-amber-400 rounded transition-colors"
+              title="Unstage File"
+            >
+              <Minus class="w-3.5 h-3.5" />
+            </button>
+          </Show>
+        </div>
+      </div>
+    );
+  };
+
   // Recursive Tree Node Renderer for Commit Files
-  const renderTreeNode = (
+  const renderCommitTreeNode = (
     node: GenericTreeNode<CommitFileChange>,
     commitHash: string,
     depth: number = 0,
   ) => {
     const isFolder = node.isFolder;
-    // Expanded if present in expandedFolders, or auto-expand top level if set is empty
     const isExpanded = () =>
       expandedFolders().has(node.id) ||
       (expandedFolders().size === 0 && depth === 0);
@@ -269,7 +418,7 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
 
           <Show when={isExpanded()}>
             <For each={node.children}>
-              {(child) => renderTreeNode(child, commitHash, depth + 1)}
+              {(child) => renderCommitTreeNode(child, commitHash, depth + 1)}
             </For>
           </Show>
         </div>
@@ -363,9 +512,20 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
           <button
             onClick={() => repoStore.refreshRepo(props.repo.path)}
             class="px-3 py-1.5 bg-[#171B26] hover:bg-[#202534] border border-gray-700/60 rounded-xl text-xs font-medium text-gray-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Scan working tree and reload commit history"
           >
-            <RefreshCw class="w-3.5 h-3.5 text-cyan-400" />
-            <span>Refresh</span>
+            <RefreshCw
+              class={`w-3.5 h-3.5 text-cyan-400 ${
+                repoStore.isRefreshingRepo(props.repo.path)
+                  ? "animate-spin"
+                  : ""
+              }`}
+            />
+            <span>
+              {repoStore.isRefreshingRepo(props.repo.path)
+                ? "Refreshing..."
+                : "Refresh"}
+            </span>
           </button>
         </div>
       </div>
@@ -436,7 +596,7 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
 
       {/* 3. Active Working Tree Changes Breakdown */}
       <div class="bg-[#11141D] border border-gray-800 rounded-2xl p-6 space-y-4 shadow-xl">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between flex-wrap gap-3">
           <div class="flex items-center gap-2">
             <Layers class="w-4 h-4 text-indigo-400" />
             <h2 class="text-xs font-bold uppercase tracking-wider text-gray-200">
@@ -444,8 +604,60 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
             </h2>
           </div>
 
-          <Show when={files().length > 0}>
-            <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2">
+            {/* View Mode Switcher: Tree vs List */}
+            <Show when={files().length > 0}>
+              {/* Expand/Collapse All (Tree Mode only) */}
+              <Show when={uncommittedChangesViewMode() === "tree"}>
+                <button
+                  onClick={toggleExpandAllUncommittedFolders}
+                  class="px-2 py-1 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 rounded-lg text-[10.5px] font-medium text-gray-300 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Expand or collapse all folders"
+                >
+                  <ChevronsUpDown class="w-3 h-3 text-indigo-400" />
+                  <span class="hidden sm:inline">Expand/Collapse All</span>
+                </button>
+              </Show>
+
+              <div class="flex items-center bg-[#151926] border border-gray-700/60 rounded-lg p-0.5">
+                <button
+                  onClick={() =>
+                    settingsStore.updateSetting(
+                      "uncommittedChangesViewMode",
+                      "tree",
+                    )
+                  }
+                  class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
+                    uncommittedChangesViewMode() === "tree"
+                      ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                  title="View as Tree"
+                >
+                  <FolderTree class="w-3 h-3" />
+                  <span>Tree</span>
+                </button>
+                <button
+                  onClick={() =>
+                    settingsStore.updateSetting(
+                      "uncommittedChangesViewMode",
+                      "list",
+                    )
+                  }
+                  class={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors ${
+                    uncommittedChangesViewMode() === "list"
+                      ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                  title="View as Flat List"
+                >
+                  <List class="w-3 h-3" />
+                  <span>List</span>
+                </button>
+              </div>
+
+              <div class="h-4 w-px bg-gray-700 mx-0.5" />
+
               <button
                 onClick={() => repoStore.stageFiles(props.repo.path, [])}
                 class="px-2.5 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-semibold rounded-lg text-xs transition-colors cursor-pointer"
@@ -458,8 +670,8 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
               >
                 Unstage All
               </button>
-            </div>
-          </Show>
+            </Show>
+          </div>
         </div>
 
         <Show
@@ -474,97 +686,217 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
             </div>
           }
         >
-          <div class="divide-y divide-gray-800 border border-gray-800 rounded-xl overflow-hidden bg-[#0D1017]">
-            <For each={files()}>
-              {(file) => (
-                <div
-                  onClick={() =>
-                    repoStore.selectFileForDiff(file.path, file.staged)
-                  }
-                  class="group px-4 py-2.5 hover:bg-[#161B26] flex items-center justify-between gap-4 cursor-pointer transition-colors"
-                >
-                  <div class="flex items-center gap-3 min-w-0">
-                    {getStatusBadge(file.status)}
-                    <span class="font-mono text-xs text-gray-200 truncate group-hover:text-indigo-300 transition-colors">
-                      {file.path}
-                    </span>
-                  </div>
-
-                  <div class="flex items-center gap-2 flex-shrink-0">
-                    <span class="text-[11px] text-gray-500 font-mono opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                      <FileCode class="w-3 h-3 text-indigo-400" />
-                      <span>Inspect Diff</span>
-                    </span>
-
-                    <Show
-                      when={file.staged}
-                      fallback={
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void repoStore.stageFiles(props.repo.path, [
-                              file.path,
-                            ]);
-                          }}
-                          class="p-1 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-400 rounded transition-colors"
-                          title="Stage File"
-                        >
-                          <Plus class="w-3.5 h-3.5" />
-                        </button>
-                      }
-                    >
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void repoStore.unstageFiles(props.repo.path, [
-                            file.path,
-                          ]);
-                        }}
-                        class="p-1 hover:bg-amber-500/20 text-gray-400 hover:text-amber-400 rounded transition-colors"
-                        title="Unstage File"
+          <div class="border border-gray-800 rounded-xl overflow-hidden bg-[#0D1017]">
+            {/* 1. Tree View Mode */}
+            <Show
+              when={uncommittedChangesViewMode() === "tree"}
+              fallback={
+                /* 2. Flat List View Mode */
+                <div class="divide-y divide-gray-800">
+                  <For each={files()}>
+                    {(file) => (
+                      <div
+                        onClick={() =>
+                          repoStore.selectFileForDiff(file.path, file.staged)
+                        }
+                        class="group px-4 py-2.5 hover:bg-[#161B26] flex items-center justify-between gap-4 cursor-pointer transition-colors"
                       >
-                        <Minus class="w-3.5 h-3.5" />
-                      </button>
-                    </Show>
-                  </div>
+                        <div class="flex items-center gap-3 min-w-0">
+                          {getStatusBadge(file.status)}
+                          <span class="font-mono text-xs text-gray-200 truncate group-hover:text-indigo-300 transition-colors">
+                            {file.path}
+                          </span>
+                        </div>
+
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                          <span class="text-[11px] text-gray-500 font-mono opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                            <FileCode class="w-3 h-3 text-indigo-400" />
+                            <span>Inspect Diff</span>
+                          </span>
+
+                          <Show
+                            when={file.staged}
+                            fallback={
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void repoStore.stageFiles(props.repo.path, [
+                                    file.path,
+                                  ]);
+                                }}
+                                class="p-1 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-400 rounded transition-colors"
+                                title="Stage File"
+                              >
+                                <Plus class="w-3.5 h-3.5" />
+                              </button>
+                            }
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void repoStore.unstageFiles(props.repo.path, [
+                                  file.path,
+                                ]);
+                              }}
+                              class="p-1 hover:bg-amber-500/20 text-gray-400 hover:text-amber-400 rounded transition-colors"
+                              title="Unstage File"
+                            >
+                              <Minus class="w-3.5 h-3.5" />
+                            </button>
+                          </Show>
+                        </div>
+                      </div>
+                    )}
+                  </For>
                 </div>
-              )}
-            </For>
+              }
+            >
+              <div class="py-1.5 divide-y divide-gray-800/40">
+                <For each={uncommittedFilesTree()}>
+                  {(node) => renderUncommittedTreeNode(node)}
+                </For>
+              </div>
+            </Show>
           </div>
         </Show>
       </div>
 
-      {/* 4. Recent Commit History Timeline with Persistent Expanded Commit */}
+      {/* 4. Recent Commit History Timeline with Persistent Expanded Commits, Search & Full History Controls */}
       <div class="bg-[#11141D] border border-gray-800 rounded-2xl p-6 space-y-4 shadow-xl">
-        <div class="flex items-center justify-between">
+        {/* Header with Title and Control Buttons */}
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div class="flex items-center gap-2">
             <History class="w-4 h-4 text-cyan-400" />
             <h2 class="text-xs font-bold uppercase tracking-wider text-gray-200">
-              Recent Commit History
+              Commit History
             </h2>
+            <span class="px-2 py-0.5 bg-[#181D2B] border border-gray-700/60 rounded-full text-[10px] font-mono font-bold text-gray-300">
+              {filteredCommits().length} / {commits().length} Loaded
+            </span>
           </div>
-          <span class="text-xs font-mono text-gray-500">
-            Right-click or click a commit to inspect changed files
-          </span>
+
+          <div class="flex items-center gap-2 flex-wrap">
+            {/* Expand All / Collapse All Commits */}
+            <button
+              onClick={toggleExpandAllCommits}
+              class="px-2.5 py-1 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 rounded-lg text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 cursor-pointer transition-colors"
+              title={
+                isAllCommitsExpanded()
+                  ? "Collapse all expanded commits"
+                  : "Expand all visible commits"
+              }
+            >
+              <Show
+                when={isAllCommitsExpanded()}
+                fallback={
+                  <ChevronsUpDown class="w-3.5 h-3.5 text-indigo-400" />
+                }
+              >
+                <ChevronsUpDown class="w-3.5 h-3.5 text-amber-400 rotate-90" />
+              </Show>
+              <span>
+                {isAllCommitsExpanded() ? "Collapse All" : "Expand All"}
+              </span>
+            </button>
+
+            {/* Commit Limit Preset Switcher */}
+            <div class="flex items-center bg-[#151926] border border-gray-700/60 rounded-lg p-0.5 text-[10px] font-mono">
+              <button
+                onClick={() => repoStore.setCommitLimit(25)}
+                class={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                  repoStore.commitLimit() === 25
+                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                25
+              </button>
+              <button
+                onClick={() => repoStore.setCommitLimit(50)}
+                class={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                  repoStore.commitLimit() === 50
+                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                50
+              </button>
+              <button
+                onClick={() => repoStore.setCommitLimit(100)}
+                class={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                  repoStore.commitLimit() === 100
+                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                100
+              </button>
+              <button
+                onClick={() => repoStore.setCommitLimit(10000)}
+                class={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                  repoStore.commitLimit() >= 10000
+                    ? "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/40"
+                    : "text-gray-400 hover:text-white"
+                }`}
+                title="Load all historical commits on this branch"
+              >
+                All
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Live Search Filter Bar */}
+        <div class="relative flex items-center">
+          <Search class="w-3.5 h-3.5 text-gray-400 absolute left-3 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Filter commits by message, author, or SHA..."
+            value={commitSearch()}
+            onInput={(e) => setCommitSearch(e.currentTarget.value)}
+            class="w-full pl-9 pr-8 py-1.5 bg-[#0D1017] border border-gray-800 rounded-xl text-gray-200 placeholder-gray-500 text-xs font-mono focus:outline-none focus:border-indigo-400 transition-colors"
+          />
+          <Show when={commitSearch()}>
+            <button
+              onClick={() => setCommitSearch("")}
+              class="p-1 text-gray-500 hover:text-gray-300 absolute right-2.5 cursor-pointer"
+              title="Clear search"
+            >
+              <X class="w-3.5 h-3.5" />
+            </button>
+          </Show>
         </div>
 
         <Show
-          when={commits().length > 0}
+          when={filteredCommits().length > 0}
           fallback={
-            <div class="p-6 text-center text-xs text-gray-500">
-              No commit history found on active branch.
+            <div class="p-8 text-center text-xs text-gray-500 space-y-2">
+              <Show
+                when={commitSearch()}
+                fallback={<p>No commit history found on active branch.</p>}
+              >
+                <p>No commits match filter "{commitSearch()}".</p>
+                <button
+                  onClick={() => setCommitSearch("")}
+                  class="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 rounded-lg text-xs cursor-pointer hover:bg-indigo-500/30"
+                >
+                  Clear Filter
+                </button>
+              </Show>
             </div>
           }
         >
           <div class="space-y-2.5">
-            <For each={commits()}>
+            <For each={filteredCommits()}>
               {(commit) => {
-                const isSelected = () => selectedCommitHash() === commit.hash;
+                const isExpanded = () =>
+                  expandedCommitHashes().has(commit.hash);
+                const detail = () => repoStore.getCommitDetail(commit.hash);
 
                 return (
                   <div
                     class={`border rounded-xl transition-all ${
-                      isSelected()
+                      isExpanded()
                         ? "border-indigo-500/60 bg-[#121624] shadow-lg"
                         : "border-gray-800/80 bg-[#0D1017] hover:bg-[#141824]"
                     }`}
@@ -607,7 +939,7 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
 
                         <button
                           class={`p-1 rounded-lg text-gray-400 hover:text-white transition-transform ${
-                            isSelected() ? "rotate-90 text-indigo-400" : ""
+                            isExpanded() ? "rotate-90 text-indigo-400" : ""
                           }`}
                         >
                           <ChevronRight class="w-4 h-4" />
@@ -615,11 +947,11 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                       </div>
                     </div>
 
-                    {/* Expanded Commit Details & Modified Files Inspector (GitHub style) */}
-                    <Show when={isSelected()}>
+                    {/* Expanded Commit Details & Modified Files Inspector */}
+                    <Show when={isExpanded()}>
                       <div class="px-4 pb-4 pt-1 border-t border-gray-800/80 mt-1 space-y-3">
                         <Show
-                          when={!isLoadingDetail()}
+                          when={detail()}
                           fallback={
                             <div class="py-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
                               <RefreshCw class="w-3.5 h-3.5 animate-spin text-indigo-400" />
@@ -629,14 +961,18 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                             </div>
                           }
                         >
-                          <Show when={commitDetail()}>
-                            {(detail) => (
+                          {(d) => {
+                            const commitFilesTree = createMemo(() =>
+                              buildGenericTree(d().files || []),
+                            );
+
+                            return (
                               <div class="space-y-3 pt-2">
                                 {/* Full Commit Body / SHA Card */}
                                 <div class="bg-[#0A0C13] p-3.5 rounded-xl border border-gray-800 space-y-3 text-xs shadow-inner">
                                   <div class="flex items-center justify-between text-gray-400 font-mono text-[11px] gap-2 flex-wrap">
                                     <span class="truncate">
-                                      Commit SHA: {detail().hash}
+                                      Commit SHA: {d().hash}
                                     </span>
 
                                     <div class="flex items-center gap-2">
@@ -646,7 +982,7 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                                           repoStore.selectFileForDiff(
                                             "__ALL__",
                                             false,
-                                            detail().hash,
+                                            d().hash,
                                           )
                                         }
                                         class="px-2.5 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-indigo-300 font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
@@ -658,25 +994,20 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
 
                                       <button
                                         onClick={() =>
-                                          copyText(
-                                            detail().hash,
-                                            `sha-${detail().hash}`,
-                                          )
+                                          copyText(d().hash, `sha-${d().hash}`)
                                         }
                                         class="px-2 py-1 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 text-gray-300 hover:text-white rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
                                       >
                                         <Show
                                           when={
-                                            copiedHash() ===
-                                            `sha-${detail().hash}`
+                                            copiedHash() === `sha-${d().hash}`
                                           }
                                           fallback={<Copy class="w-3 h-3" />}
                                         >
                                           <Check class="w-3 h-3 text-emerald-400" />
                                         </Show>
                                         <span>
-                                          {copiedHash() ===
-                                          `sha-${detail().hash}`
+                                          {copiedHash() === `sha-${d().hash}`
                                             ? "Copied"
                                             : "Copy SHA"}
                                         </span>
@@ -684,22 +1015,22 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                                     </div>
                                   </div>
 
-                                  <Show when={detail().body}>
+                                  <Show when={d().body}>
                                     <pre class="font-mono text-gray-300 whitespace-pre-wrap text-[11.5px] border-t border-gray-800/60 pt-2">
-                                      {detail().body}
+                                      {d().body}
                                     </pre>
                                   </Show>
 
                                   {/* Stats summary */}
                                   <div class="flex items-center gap-3 text-[11px] font-mono font-bold pt-1">
                                     <span class="text-gray-400">
-                                      {detail().files.length} changed files
+                                      {d().files.length} changed files
                                     </span>
                                     <span class="text-emerald-400">
-                                      +{detail().totalAdditions} additions
+                                      +{d().totalAdditions} additions
                                     </span>
                                     <span class="text-rose-400">
-                                      -{detail().totalDeletions} deletions
+                                      -{d().totalDeletions} deletions
                                     </span>
                                   </div>
                                 </div>
@@ -709,7 +1040,7 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                                   <div class="flex items-center justify-between gap-2 flex-wrap">
                                     <span class="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider block">
                                       Files Changed in This Commit (
-                                      {detail().files.length})
+                                      {d().files.length})
                                     </span>
 
                                     <div class="flex items-center gap-2">
@@ -718,7 +1049,11 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                                         when={commitFilesViewMode() === "tree"}
                                       >
                                         <button
-                                          onClick={toggleExpandAllFolders}
+                                          onClick={() =>
+                                            toggleExpandAllCommitFolders(
+                                              d().files,
+                                            )
+                                          }
                                           class="px-2 py-0.5 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 rounded-lg text-[10px] font-medium text-gray-300 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
                                           title="Expand or collapse all folders"
                                         >
@@ -774,14 +1109,14 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                                       fallback={
                                         /* 2. Flat List View Mode */
                                         <div class="divide-y divide-gray-800/60">
-                                          <For each={detail().files}>
+                                          <For each={d().files}>
                                             {(file) => (
                                               <div
                                                 onClick={() =>
                                                   repoStore.selectFileForDiff(
                                                     file.path,
                                                     false,
-                                                    detail().hash,
+                                                    d().hash,
                                                   )
                                                 }
                                                 class="group px-3 py-2 hover:bg-[#151926] flex items-center justify-between gap-3 cursor-pointer transition-colors"
@@ -821,7 +1156,7 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                                       <div class="py-1">
                                         <For each={commitFilesTree()}>
                                           {(node) =>
-                                            renderTreeNode(node, detail().hash)
+                                            renderCommitTreeNode(node, d().hash)
                                           }
                                         </For>
                                       </div>
@@ -829,8 +1164,8 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                                   </div>
                                 </div>
                               </div>
-                            )}
-                          </Show>
+                            );
+                          }}
                         </Show>
                       </div>
                     </Show>
@@ -838,6 +1173,26 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
                 );
               }}
             </For>
+
+            {/* Load More Commits & Load All Button Footer */}
+            <Show when={repoStore.commitLimit() < 10000}>
+              <div class="pt-2 flex items-center justify-center gap-3">
+                <button
+                  onClick={() => repoStore.loadMoreCommits(props.repo.path, 25)}
+                  class="px-4 py-2 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 rounded-xl text-xs font-semibold text-gray-200 hover:text-white flex items-center gap-2 cursor-pointer transition-colors shadow-sm"
+                >
+                  <History class="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Load More Commits (+25)</span>
+                </button>
+
+                <button
+                  onClick={() => repoStore.setCommitLimit(10000)}
+                  class="px-4 py-2 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/40 rounded-xl text-xs font-semibold text-indigo-300 hover:text-white flex items-center gap-2 cursor-pointer transition-colors shadow-sm"
+                >
+                  <span>Load All Commits on Branch</span>
+                </button>
+              </div>
+            </Show>
           </div>
         </Show>
       </div>

@@ -33,6 +33,7 @@ export interface AppSettings extends AppearanceProfile {
   diffViewLayout: "inline" | "split";
   diffCollapseUnchanged: boolean;
   commitFilesViewMode: "tree" | "list";
+  uncommittedChangesViewMode: "tree" | "list";
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -52,6 +53,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   diffViewLayout: "inline",
   diffCollapseUnchanged: true,
   commitFilesViewMode: "tree",
+  uncommittedChangesViewMode: "tree",
 };
 
 const STORAGE_KEY = "onogitree_settings_v2";

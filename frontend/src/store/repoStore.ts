@@ -23,13 +23,23 @@ function createRepoStore() {
   const [selectedFileDiff, setSelectedFileDiff] =
     createSignal<DiffSelection | null>(null);
   const [recentCommits, setRecentCommits] = createSignal<CommitSummary[]>([]);
+  const [commitLimit, setCommitLimit] = createSignal<number>(25);
   const [expandedCommitHash, setExpandedCommitHash] = createSignal<
     string | null
   >(null);
+  const [expandedCommitHashes, setExpandedCommitHashes] = createSignal<
+    Set<string>
+  >(new Set<string>());
+  const [commitDetailsMap, setCommitDetailsMap] = createSignal<
+    Record<string, CommitDetail>
+  >({});
   const [selectedCommitDetail, setSelectedCommitDetail] =
     createSignal<CommitDetail | null>(null);
   const [isLoadingCommitDetail, setIsLoadingCommitDetail] =
     createSignal<boolean>(false);
+  const [refreshingRepoPaths, setRefreshingRepoPaths] = createSignal<
+    Set<string>
+  >(new Set<string>());
 
   // Fast In-Memory Diff & Commit Cache to prevent flash/flicker
   const diffCache = new Map<string, string>();
@@ -38,7 +48,7 @@ function createRepoStore() {
   const selectedRepo = createMemo(() => {
     const id = selectedRepoId();
     if (!id) return repositories()[0] || null;
-    return repositories().find((r) => r.id === id) || null;
+    return repositories().find((r) => r.id === id || r.path === id) || null;
   });
 
   const filteredRepositories = createMemo(() => {
@@ -70,20 +80,42 @@ function createRepoStore() {
     filteredRepositories,
     selectedFileDiff,
     recentCommits,
+    commitLimit,
     expandedCommitHash,
+    expandedCommitHashes,
+    commitDetailsMap,
     selectedCommitDetail,
     isLoadingCommitDetail,
+    refreshingRepoPaths,
 
     setSearchQuery(q: string) {
       setSearchQuery(q);
+    },
+
+    setCommitLimit(limit: number) {
+      setCommitLimit(limit);
+      const repo = selectedRepo();
+      if (repo) {
+        void this.loadRecentCommits(repo.path, limit);
+      }
+    },
+
+    isRefreshingRepo(path: string) {
+      return refreshingRepoPaths().has(path);
     },
 
     selectRepo(id: string) {
       setSelectedRepoId(id);
       setSelectedFileDiff(null);
       setExpandedCommitHash(null);
+      setExpandedCommitHashes(new Set<string>());
       setSelectedCommitDetail(null);
-      void this.loadRecentCommits(id);
+      const repo = repositories().find((r) => r.id === id || r.path === id);
+      if (repo) {
+        void this.loadRecentCommits(repo.path);
+      } else {
+        void this.loadRecentCommits(id);
+      }
     },
 
     selectFileForDiff(filePath: string, staged: boolean, commitHash?: string) {
@@ -94,47 +126,97 @@ function createRepoStore() {
       setSelectedFileDiff(null);
     },
 
-    setExpandedCommit(hash: string | null) {
-      setExpandedCommitHash(hash);
-      if (!hash) {
-        setSelectedCommitDetail(null);
-        return;
-      }
-      void this.selectCommit(hash);
-    },
-
-    async selectCommit(commitHash: string) {
-      const repo = selectedRepo();
-      if (!repo) return;
-
-      const cacheKey = `${repo.path}::${commitHash}`;
+    async fetchAndCacheCommit(repoPath: string, commitHash: string) {
+      const cacheKey = `${repoPath}::${commitHash}`;
       if (commitCache.has(cacheKey)) {
-        setSelectedCommitDetail(commitCache.get(cacheKey)!);
-        setExpandedCommitHash(commitHash);
-        return;
+        const cached = commitCache.get(cacheKey)!;
+        setCommitDetailsMap((prev) => ({ ...prev, [commitHash]: cached }));
+        setSelectedCommitDetail(cached);
+        return cached;
       }
 
       setIsLoadingCommitDetail(true);
       try {
-        const detail = await WailsBridge.getCommitDetails(
-          repo.path,
-          commitHash,
-        );
+        const detail = await WailsBridge.getCommitDetails(repoPath, commitHash);
         if (detail) {
           commitCache.set(cacheKey, detail);
+          commitCache.set(commitHash, detail);
+          setCommitDetailsMap((prev) => ({ ...prev, [commitHash]: detail }));
           setSelectedCommitDetail(detail);
-          setExpandedCommitHash(commitHash);
+          return detail;
         }
       } catch (err) {
         console.error("Failed to load commit details:", err);
       } finally {
         setIsLoadingCommitDetail(false);
       }
+      return undefined;
+    },
+
+    getCommitDetail(hash: string): CommitDetail | undefined {
+      return commitDetailsMap()[hash] || commitCache.get(hash);
+    },
+
+    async toggleCommitExpanded(commitHash: string) {
+      const repo = selectedRepo();
+      if (!repo) return;
+      const isExpanded = expandedCommitHashes().has(commitHash);
+      if (isExpanded) {
+        setExpandedCommitHashes((prev) => {
+          const next = new Set(prev);
+          next.delete(commitHash);
+          return next;
+        });
+        if (expandedCommitHash() === commitHash) {
+          setExpandedCommitHash(null);
+          setSelectedCommitDetail(null);
+        }
+      } else {
+        setExpandedCommitHashes((prev) => new Set(prev).add(commitHash));
+        setExpandedCommitHash(commitHash);
+        await this.fetchAndCacheCommit(repo.path, commitHash);
+      }
+    },
+
+    async expandAllCommits(hashes: string[]) {
+      const repo = selectedRepo();
+      if (!repo) return;
+      setExpandedCommitHashes(new Set(hashes));
+      if (hashes.length > 0) {
+        setExpandedCommitHash(hashes[0]);
+      }
+      await Promise.all(
+        hashes.map((h) => this.fetchAndCacheCommit(repo.path, h)),
+      );
+    },
+
+    collapseAllCommits() {
+      setExpandedCommitHashes(new Set<string>());
+      setExpandedCommitHash(null);
+      setSelectedCommitDetail(null);
+    },
+
+    setExpandedCommit(hash: string | null) {
+      setExpandedCommitHash(hash);
+      if (!hash) {
+        setSelectedCommitDetail(null);
+        setExpandedCommitHashes(new Set<string>());
+        return;
+      }
+      setExpandedCommitHashes(new Set<string>([hash]));
+      void this.selectCommit(hash);
+    },
+
+    async selectCommit(commitHash: string) {
+      const repo = selectedRepo();
+      if (!repo) return;
+      await this.fetchAndCacheCommit(repo.path, commitHash);
     },
 
     clearSelectedCommit() {
       setSelectedCommitDetail(null);
       setExpandedCommitHash(null);
+      setExpandedCommitHashes(new Set<string>());
     },
 
     async getDiff(
@@ -166,13 +248,20 @@ function createRepoStore() {
       diffCache.clear();
     },
 
-    async loadRecentCommits(repoPath: string) {
+    async loadRecentCommits(repoPath: string, limit?: number) {
+      const l = limit ?? commitLimit();
       try {
-        const commits = await WailsBridge.getRecentCommits(repoPath, 15);
+        const commits = await WailsBridge.getRecentCommits(repoPath, l);
         setRecentCommits(commits);
       } catch (err) {
         console.error("Failed to load recent commits:", err);
       }
+    },
+
+    async loadMoreCommits(repoPath: string, delta: number = 25) {
+      const nextLimit = commitLimit() + delta;
+      setCommitLimit(nextLimit);
+      await this.loadRecentCommits(repoPath, nextLimit);
     },
 
     async loadWorkspace() {
@@ -198,8 +287,13 @@ function createRepoStore() {
       try {
         const status = await WailsBridge.addRepository(path);
         setRepositories((prev) => {
-          const exists = prev.some((r) => r.id === status.id);
-          if (exists) return prev.map((r) => (r.id === status.id ? status : r));
+          const exists = prev.some(
+            (r) => r.id === status.id || r.path === status.path,
+          );
+          if (exists)
+            return prev.map((r) =>
+              r.id === status.id || r.path === status.path ? status : r,
+            );
           return [...prev, status];
         });
         setSelectedRepoId(status.id);
@@ -215,7 +309,9 @@ function createRepoStore() {
     async removeRepository(id: string) {
       try {
         await WailsBridge.removeRepository(id);
-        setRepositories((prev) => prev.filter((r) => r.id !== id));
+        setRepositories((prev) =>
+          prev.filter((r) => r.id !== id && r.path !== id),
+        );
         if (selectedRepoId() === id) {
           const remaining = repositories();
           setSelectedRepoId(remaining.length > 0 ? remaining[0].id : null);
@@ -229,13 +325,15 @@ function createRepoStore() {
     },
 
     async togglePin(id: string) {
-      const repo = repositories().find((r) => r.id === id);
+      const repo = repositories().find((r) => r.id === id || r.path === id);
       if (!repo) return;
       const newPinned = !repo.isPinned;
       try {
         await WailsBridge.togglePin(id, newPinned);
         setRepositories((prev) =>
-          prev.map((r) => (r.id === id ? { ...r, isPinned: newPinned } : r)),
+          prev.map((r) =>
+            r.id === id || r.path === id ? { ...r, isPinned: newPinned } : r,
+          ),
         );
       } catch (err) {
         console.error("Failed to toggle pin:", err);
@@ -243,14 +341,16 @@ function createRepoStore() {
     },
 
     async toggleAutoFetch(id: string) {
-      const repo = repositories().find((r) => r.id === id);
+      const repo = repositories().find((r) => r.id === id || r.path === id);
       if (!repo) return;
       const newAutoFetch = !repo.autoFetchEnabled;
       try {
         await WailsBridge.toggleAutoFetch(id, newAutoFetch);
         setRepositories((prev) =>
           prev.map((r) =>
-            r.id === id ? { ...r, autoFetchEnabled: newAutoFetch } : r,
+            r.id === id || r.path === id
+              ? { ...r, autoFetchEnabled: newAutoFetch }
+              : r,
           ),
         );
       } catch (err) {
@@ -259,15 +359,24 @@ function createRepoStore() {
     },
 
     async refreshRepo(path: string) {
+      setRefreshingRepoPaths((prev) => new Set(prev).add(path));
       try {
         this.invalidateDiffCache();
         const status = await WailsBridge.getRepoStatus(path);
         setRepositories((prev) =>
-          prev.map((r) => (r.id === path ? status : r)),
+          prev.map((r) => (r.id === path || r.path === path ? status : r)),
         );
-        void this.loadRecentCommits(path);
+        await this.loadRecentCommits(path, commitLimit());
       } catch (err) {
         console.error("Failed to refresh repo status:", err);
+      } finally {
+        setTimeout(() => {
+          setRefreshingRepoPaths((prev) => {
+            const next = new Set(prev);
+            next.delete(path);
+            return next;
+          });
+        }, 500);
       }
     },
 
@@ -277,9 +386,9 @@ function createRepoStore() {
         this.invalidateDiffCache();
         const statuses = await WailsBridge.refreshAll();
         setRepositories(statuses);
-        const selId = selectedRepoId();
-        if (selId) {
-          void this.loadRecentCommits(selId);
+        const sel = selectedRepo();
+        if (sel) {
+          await this.loadRecentCommits(sel.path, commitLimit());
         }
       } catch (err) {
         console.error("Failed to refresh all repos:", err);
