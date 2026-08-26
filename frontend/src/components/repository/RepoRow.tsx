@@ -1,22 +1,22 @@
-import { Component, createSignal, Show } from 'solid-js';
-import { 
-  GitBranch, 
-  Pin, 
-  RefreshCw, 
-  AlertTriangle, 
-  Key, 
+import { Component, createSignal, Show } from "solid-js";
+import {
+  GitBranch,
+  Pin,
+  RefreshCw,
+  AlertTriangle,
+  Key,
   X,
   Radio,
   Folder,
   Copy,
   ArrowDownToLine,
   ArrowUpFromLine,
-  Trash2
-} from 'lucide-solid';
-import { RepoStatus } from '../../types/git';
-import { repoStore } from '../../store/repoStore';
-import { batchStore } from '../../store/batchStore';
-import { ContextMenu, MenuItem } from '../common/ContextMenu';
+  Trash2,
+} from "lucide-solid";
+import { RepoStatus } from "../../types/git";
+import { repoStore } from "../../store/repoStore";
+import { batchStore } from "../../store/batchStore";
+import { ContextMenu, MenuItem } from "../common/ContextMenu";
 
 interface RepoRowProps {
   repo: RepoStatus;
@@ -27,7 +27,10 @@ interface RepoRowProps {
 
 export const RepoRow: Component<RepoRowProps> = (props) => {
   const batchEvent = () => batchStore.progressEvents()[props.repo.id];
-  const [contextMenuPos, setContextMenuPos] = createSignal<{ x: number; y: number } | null>(null);
+  const [contextMenuPos, setContextMenuPos] = createSignal<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   const handleContextMenu = (e: MouseEvent) => {
     e.preventDefault();
@@ -37,59 +40,61 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
 
   const menuItems: () => MenuItem[] = () => [
     {
-      id: 'branch',
+      id: "branch",
       label: `Switch Branch (${props.repo.currentBranch})...`,
       icon: <GitBranch class="w-3.5 h-3.5 text-indigo-400" />,
       onClick: () => props.onBranchClick(),
     },
     {
-      id: 'refresh',
-      label: 'Refresh Repository',
+      id: "refresh",
+      label: "Refresh Repository",
       icon: <RefreshCw class="w-3.5 h-3.5 text-cyan-400" />,
       onClick: () => repoStore.refreshRepo(props.repo.path),
     },
     {
-      id: 'pull',
-      label: 'Pull Changes',
+      id: "pull",
+      label: "Pull Changes",
       icon: <ArrowDownToLine class="w-3.5 h-3.5 text-emerald-400" />,
       onClick: () => batchStore.runPullAll(),
     },
     {
-      id: 'push',
-      label: 'Push Commits',
+      id: "push",
+      label: "Push Commits",
       icon: <ArrowUpFromLine class="w-3.5 h-3.5 text-emerald-400" />,
       onClick: () => batchStore.setIsPushModalOpen(true),
     },
-    { id: 'div-1', label: '', divider: true },
+    { id: "div-1", label: "", divider: true },
     {
-      id: 'open-folder',
-      label: 'Open in File Manager',
+      id: "open-folder",
+      label: "Open in File Manager",
       icon: <Folder class="w-3.5 h-3.5 text-amber-400" />,
       onClick: () => repoStore.openPath(props.repo.path),
     },
     {
-      id: 'copy-path',
-      label: 'Copy Repository Path',
+      id: "copy-path",
+      label: "Copy Repository Path",
       icon: <Copy class="w-3.5 h-3.5 text-gray-400" />,
       onClick: () => navigator.clipboard.writeText(props.repo.path),
     },
-    { id: 'div-2', label: '', divider: true },
+    { id: "div-2", label: "", divider: true },
     {
-      id: 'pin',
-      label: props.repo.isPinned ? 'Unpin Repository' : 'Pin Repository to Top',
+      id: "pin",
+      label: props.repo.isPinned ? "Unpin Repository" : "Pin Repository to Top",
       icon: <Pin class="w-3.5 h-3.5 text-indigo-400" />,
       onClick: () => repoStore.togglePin(props.repo.id),
     },
     {
-      id: 'autofetch',
-      label: props.repo.autoFetchEnabled ? 'Disable Auto-Fetch' : 'Enable Auto-Fetch',
+      id: "autofetch",
+      label: props.repo.autoFetchEnabled
+        ? "Disable Auto-Fetch"
+        : "Enable Auto-Fetch",
       icon: <Radio class="w-3.5 h-3.5 text-cyan-400" />,
       onClick: () => repoStore.toggleAutoFetch(props.repo.id),
     },
-    { id: 'div-3', label: '', divider: true },
+    { id: "div-3", label: "", divider: true },
     {
-      id: 'remove',
-      label: 'Remove from Workspace',
+      id: "remove",
+      label: "Remove from Workspace",
       icon: <Trash2 class="w-3.5 h-3.5 text-rose-400" />,
       danger: true,
       onClick: () => repoStore.removeRepository(props.repo.id),
@@ -103,8 +108,8 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
         onContextMenu={handleContextMenu}
         class={`group px-3 py-2 border-b border-carbon-border/70 cursor-pointer select-none transition-all flex flex-col gap-1 text-xs ${
           props.isSelected
-            ? 'bg-carbon-elevated border-l-2 border-l-indigo-400 shadow-sm'
-            : 'hover:bg-[#151924] bg-carbon-base'
+            ? "bg-carbon-elevated border-l-2 border-l-indigo-400 shadow-sm"
+            : "hover:bg-[#151924] bg-carbon-base"
         }`}
       >
         {/* Line 1: Main Header (Pin, Repo Name, Status Indicators, Actions) */}
@@ -117,21 +122,31 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
               }}
               class={`p-0.5 rounded transition-opacity ${
                 props.repo.isPinned
-                  ? 'text-indigo-400 opacity-100'
-                  : 'text-gray-500 opacity-0 group-hover:opacity-100 hover:text-gray-300'
+                  ? "text-indigo-400 opacity-100"
+                  : "text-gray-500 opacity-0 group-hover:opacity-100 hover:text-gray-300"
               }`}
-              title={props.repo.isPinned ? 'Unpin repository' : 'Pin repository to top'}
+              title={
+                props.repo.isPinned
+                  ? "Unpin repository"
+                  : "Pin repository to top"
+              }
             >
               <Pin class="w-3.5 h-3.5 rotate-45" />
             </button>
 
-            <span class="font-bold text-gray-100 truncate text-[13px] tracking-tight" title={props.repo.path}>
+            <span
+              class="font-bold text-gray-100 truncate text-[13px] tracking-tight"
+              title={props.repo.path}
+            >
               {props.repo.name}
             </span>
 
             {/* Dirty indicator */}
             <Show when={props.repo.isDirty}>
-              <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0" title="Uncommitted changes" />
+              <span
+                class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0"
+                title="Uncommitted changes"
+              />
             </Show>
           </div>
 
@@ -140,7 +155,7 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
             {/* Real-time batch progress state */}
             <Show when={batchEvent()}>
               {(event) => (
-                <Show when={event().status === 'running'}>
+                <Show when={event().status === "running"}>
                   <span title={event().message}>
                     <RefreshCw class="w-3 h-3 text-cyan-400 animate-spin" />
                   </span>
@@ -149,15 +164,23 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
             </Show>
 
             {/* Ahead / Behind Counters */}
-            <Show when={props.repo.aheadCount > 0 || props.repo.behindCount > 0}>
+            <Show
+              when={props.repo.aheadCount > 0 || props.repo.behindCount > 0}
+            >
               <div class="flex items-center gap-1 font-mono text-[10.5px] font-bold tabular-nums px-1.5 py-0.2 bg-carbon-surface border border-carbon-border/80 rounded">
                 <Show when={props.repo.aheadCount > 0}>
-                  <span class="text-emerald-400" title={`${props.repo.aheadCount} unpushed commits`}>
+                  <span
+                    class="text-emerald-400"
+                    title={`${props.repo.aheadCount} unpushed commits`}
+                  >
                     +{props.repo.aheadCount}↑
                   </span>
                 </Show>
                 <Show when={props.repo.behindCount > 0}>
-                  <span class="text-amber-400" title={`${props.repo.behindCount} commits behind`}>
+                  <span
+                    class="text-amber-400"
+                    title={`${props.repo.behindCount} commits behind`}
+                  >
                     ~{props.repo.behindCount}↓
                   </span>
                 </Show>
@@ -165,7 +188,11 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
             </Show>
 
             {/* Conflict Badge */}
-            <Show when={props.repo.hasConflicts || batchEvent()?.status === 'conflict'}>
+            <Show
+              when={
+                props.repo.hasConflicts || batchEvent()?.status === "conflict"
+              }
+            >
               <span class="flex items-center gap-0.5 px-1.5 py-0.2 bg-rose-500/20 border border-rose-500/40 text-rose-400 rounded text-[9.5px] font-bold animate-pulse">
                 <AlertTriangle class="w-2.5 h-2.5" />
                 <span>Conflict</span>
@@ -173,7 +200,7 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
             </Show>
 
             {/* Auth Required Badge */}
-            <Show when={batchEvent()?.status === 'auth_required'}>
+            <Show when={batchEvent()?.status === "auth_required"}>
               <span class="flex items-center gap-0.5 px-1.5 py-0.2 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded text-[9.5px] font-bold">
                 <Key class="w-2.5 h-2.5" />
                 <span>Auth</span>
@@ -232,10 +259,14 @@ export const RepoRow: Component<RepoRowProps> = (props) => {
               }}
               class={`p-0.5 rounded transition-colors ${
                 props.repo.autoFetchEnabled
-                  ? 'text-cyan-400 opacity-90 hover:opacity-100'
-                  : 'text-gray-600 opacity-40 hover:opacity-80'
+                  ? "text-cyan-400 opacity-90 hover:opacity-100"
+                  : "text-gray-600 opacity-40 hover:opacity-80"
               }`}
-              title={props.repo.autoFetchEnabled ? 'Auto-fetch enabled' : 'Auto-fetch disabled'}
+              title={
+                props.repo.autoFetchEnabled
+                  ? "Auto-fetch enabled"
+                  : "Auto-fetch disabled"
+              }
             >
               <Radio class="w-3 h-3" />
             </button>

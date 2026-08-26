@@ -1,17 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { repoStore } from './repoStore';
+import { describe, it, expect, beforeEach } from "vitest";
+import { repoStore } from "./repoStore";
 
-describe('repoStore', () => {
+describe("repoStore", () => {
   beforeEach(() => {
-    repoStore.setSearchQuery('');
+    repoStore.setSearchQuery("");
   });
 
-  it('filters repositories by search query', () => {
-    repoStore.setSearchQuery('auth');
-    expect(repoStore.searchQuery()).toBe('auth');
+  it("filters repositories by search query", () => {
+    repoStore.setSearchQuery("auth");
+    expect(repoStore.searchQuery()).toBe("auth");
   });
 
-  it('computes selectedRepo correctly', () => {
+  it("computes selectedRepo correctly", () => {
     expect(repoStore.selectedRepo()).toBeDefined();
   });
 });

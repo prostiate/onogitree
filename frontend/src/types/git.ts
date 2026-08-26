@@ -1,4 +1,5 @@
-export type FileChangeStatus = 'modified' | 'staged' | 'untracked' | 'deleted' | 'renamed' | 'conflicted';
+export type FileChangeStatus =
+  "modified" | "staged" | "untracked" | "deleted" | "renamed" | "conflicted";
 
 export interface FileStatus {
   path: string;
@@ -37,13 +38,20 @@ export interface RepoStatus {
   files?: FileStatus[];
 }
 
-export type BatchActionStatus = 'pending' | 'running' | 'success' | 'skipped' | 'conflict' | 'error' | 'auth_required';
+export type BatchActionStatus =
+  | "pending"
+  | "running"
+  | "success"
+  | "skipped"
+  | "conflict"
+  | "error"
+  | "auth_required";
 
 export interface BatchProgressEvent {
   repoId: string;
   repoPath: string;
   repoName: string;
-  action: 'pull' | 'fetch' | 'push' | 'refresh';
+  action: "pull" | "fetch" | "push" | "refresh";
   status: BatchActionStatus;
   message: string;
   aheadCount: number;
@@ -93,7 +101,7 @@ export interface CommitSummary {
 
 export interface CommitFileChange {
   path: string;
-  status: 'modified' | 'added' | 'deleted' | 'renamed';
+  status: "modified" | "added" | "deleted" | "renamed";
   additions: number;
   deletions: number;
 }
@@ -112,5 +120,3 @@ export interface CommitDetail {
   totalAdditions: number;
   totalDeletions: number;
 }
-
-

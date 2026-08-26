@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --app-font-family: 'Inter', sans-serif;
+    --app-font-family: "Inter", sans-serif;
   }
 
   body {
@@ -13,21 +13,26 @@
   }
 
   /* HTML Form & Select Dark Styling */
-  select, select option {
-    background-color: #12151D !important;
-    color: #E2E8F0 !important;
+  select,
+  select option {
+    background-color: #12151d !important;
+    color: #e2e8f0 !important;
   }
 
   /* Custom Theme Overrides */
-  html.theme-custom, html.theme-custom body, html.theme-custom .bg-carbon-base {
-    background-color: var(--custom-bg, #0F1117) !important;
+  html.theme-custom,
+  html.theme-custom body,
+  html.theme-custom .bg-carbon-base {
+    background-color: var(--custom-bg, #0f1117) !important;
   }
   html.theme-custom .bg-carbon-surface {
     background-color: var(--custom-surface, #161922) !important;
   }
 
   /* OLED Black Theme */
-  html.theme-oled, html.theme-oled body, html.theme-oled .bg-carbon-base {
+  html.theme-oled,
+  html.theme-oled body,
+  html.theme-oled .bg-carbon-base {
     background-color: #000000 !important;
   }
   html.theme-oled .bg-carbon-surface {
@@ -38,25 +43,30 @@
   }
 
   /* Light Theme */
-  html.theme-light, html.theme-light body, html.theme-light .bg-carbon-base {
-    background-color: #F8FAFC !important;
-    color: #0F172A !important;
+  html.theme-light,
+  html.theme-light body,
+  html.theme-light .bg-carbon-base {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
   }
   html.theme-light .bg-carbon-surface {
-    background-color: #FFFFFF !important;
-    border-color: #E2E8F0 !important;
-    color: #0F172A !important;
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
   }
   html.theme-light .bg-carbon-elevated {
-    background-color: #F1F5F9 !important;
-    border-color: #CBD5E1 !important;
-    color: #0F172A !important;
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
   }
-  html.theme-light .text-gray-100, html.theme-light .text-gray-200, html.theme-light .text-gray-300 {
-    color: #1E293B !important;
+  html.theme-light .text-gray-100,
+  html.theme-light .text-gray-200,
+  html.theme-light .text-gray-300 {
+    color: #1e293b !important;
   }
-  html.theme-light .text-gray-400, html.theme-light .text-gray-500 {
-    color: #64748B !important;
+  html.theme-light .text-gray-400,
+  html.theme-light .text-gray-500 {
+    color: #64748b !important;
   }
 }
 
@@ -69,9 +79,9 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #282E3E;
+  background: #282e3e;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3D455C;
+  background: #3d455c;
 }

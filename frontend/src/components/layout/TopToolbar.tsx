@@ -1,16 +1,16 @@
-import { Component, Show } from 'solid-js';
-import { 
-  FolderPlus, 
-  Search, 
-  ArrowDownToLine, 
-  RefreshCw, 
-  ArrowUpFromLine, 
-  Zap, 
+import { Component, Show } from "solid-js";
+import {
+  FolderPlus,
+  Search,
+  ArrowDownToLine,
+  RefreshCw,
+  ArrowUpFromLine,
+  Zap,
   Settings,
-  Loader2
-} from 'lucide-solid';
-import { repoStore } from '../../store/repoStore';
-import { batchStore } from '../../store/batchStore';
+  Loader2,
+} from "lucide-solid";
+import { repoStore } from "../../store/repoStore";
+import { batchStore } from "../../store/batchStore";
 
 interface TopToolbarProps {
   onOpenRepoClick: () => void;
@@ -60,7 +60,9 @@ export const TopToolbar: Component<TopToolbarProps> = (props) => {
       <div class="flex items-center gap-1.5">
         <button
           onClick={() => batchStore.setIsPullModalOpen(true)}
-          disabled={batchStore.isBatchRunning() || repoStore.repositories().length === 0}
+          disabled={
+            batchStore.isBatchRunning() || repoStore.repositories().length === 0
+          }
           class="flex items-center gap-1 px-2 py-1 bg-carbon-elevated hover:bg-carbon-hover disabled:opacity-40 disabled:cursor-not-allowed border border-carbon-border rounded text-gray-200 transition-colors cursor-pointer"
           title="Pull all repositories (with safeguards)"
         >
@@ -70,17 +72,23 @@ export const TopToolbar: Component<TopToolbarProps> = (props) => {
 
         <button
           onClick={() => batchStore.runFetchAll()}
-          disabled={batchStore.isBatchRunning() || repoStore.repositories().length === 0}
+          disabled={
+            batchStore.isBatchRunning() || repoStore.repositories().length === 0
+          }
           class="flex items-center gap-1 px-2 py-1 bg-carbon-elevated hover:bg-carbon-hover disabled:opacity-40 disabled:cursor-not-allowed border border-carbon-border rounded text-gray-200 transition-colors cursor-pointer"
           title="Fetch all remotes and prune references"
         >
-          <RefreshCw class={`w-3.5 h-3.5 text-git-cyan ${batchStore.isBatchRunning() && batchStore.batchAction() === 'fetch' ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            class={`w-3.5 h-3.5 text-git-cyan ${batchStore.isBatchRunning() && batchStore.batchAction() === "fetch" ? "animate-spin" : ""}`}
+          />
           <span class="font-medium">Fetch All</span>
         </button>
 
         <button
           onClick={() => batchStore.setIsPushModalOpen(true)}
-          disabled={batchStore.isBatchRunning() || repoStore.repositories().length === 0}
+          disabled={
+            batchStore.isBatchRunning() || repoStore.repositories().length === 0
+          }
           class="flex items-center gap-1 px-2 py-1 bg-carbon-elevated hover:bg-carbon-hover disabled:opacity-40 disabled:cursor-not-allowed border border-carbon-border rounded text-gray-200 transition-colors cursor-pointer"
           title="Review and push repositories with unpushed commits"
         >
@@ -94,7 +102,9 @@ export const TopToolbar: Component<TopToolbarProps> = (props) => {
           class="p-1 hover:bg-carbon-hover border border-carbon-border rounded text-gray-300 transition-colors cursor-pointer"
           title="Refresh working tree and branch status"
         >
-          <Zap class={`w-3.5 h-3.5 text-git-amber ${repoStore.isLoading() ? 'animate-spin' : ''}`} />
+          <Zap
+            class={`w-3.5 h-3.5 text-git-amber ${repoStore.isLoading() ? "animate-spin" : ""}`}
+          />
         </button>
 
         <button
@@ -108,4 +118,3 @@ export const TopToolbar: Component<TopToolbarProps> = (props) => {
     </header>
   );
 };
-

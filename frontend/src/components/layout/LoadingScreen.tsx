@@ -1,5 +1,5 @@
-import { Component, Show } from 'solid-js';
-import { GitBranch, HardDrive, ShieldCheck } from 'lucide-solid';
+import { Component, Show } from "solid-js";
+import { GitBranch, HardDrive, ShieldCheck } from "lucide-solid";
 
 interface LoadingScreenProps {
   isVisible: boolean;
@@ -19,7 +19,9 @@ export const LoadingScreen: Component<LoadingScreenProps> = (props) => {
           <div class="relative flex items-center justify-center">
             <div class="w-16 h-16 rounded-2xl bg-carbon-surface border border-carbon-border shadow-2xl flex items-center justify-center relative overflow-hidden">
               <div class="absolute inset-0 bg-gradient-to-tr from-git-indigo/20 via-transparent to-git-emerald/20" />
-              <span class="text-2xl transform hover:scale-110 transition-transform">🌳</span>
+              <span class="text-2xl transform hover:scale-110 transition-transform">
+                🌳
+              </span>
             </div>
             {/* Orbiting micro indicator */}
             <div class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-git-emerald flex items-center justify-center animate-ping opacity-75">

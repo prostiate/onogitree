@@ -1,8 +1,8 @@
-import { Component, createSignal, createMemo, For, Show } from 'solid-js';
-import { 
-  Check, 
-  Plus, 
-  Minus, 
+import { Component, createSignal, createMemo, For, Show } from "solid-js";
+import {
+  Check,
+  Plus,
+  Minus,
   ChevronDown,
   ChevronRight,
   RefreshCw,
@@ -14,24 +14,25 @@ import {
   EyeOff,
   List,
   FolderTree,
-  MoreHorizontal
-} from 'lucide-solid';
+  MoreHorizontal,
+} from "lucide-solid";
 
-
-import { repoStore } from '../../store/repoStore';
-import { batchStore } from '../../store/batchStore';
-import { FileStatus } from '../../types/git';
-import { ContextMenu, MenuItem } from '../common/ContextMenu';
-import { buildFileTree, sortFiles, FileTreeNode } from '../../utils/fileTree';
+import { repoStore } from "../../store/repoStore";
+import { batchStore } from "../../store/batchStore";
+import { FileStatus } from "../../types/git";
+import { ContextMenu, MenuItem } from "../common/ContextMenu";
+import { buildFileTree, sortFiles, FileTreeNode } from "../../utils/fileTree";
 
 export const ChangesView: Component = () => {
-  const [commitMessage, setCommitMessage] = createSignal<string>('');
+  const [commitMessage, setCommitMessage] = createSignal<string>("");
   const [isAmending, setIsAmending] = createSignal<boolean>(false);
   const [showCommitMenu, setShowCommitMenu] = createSignal<boolean>(false);
   const [showOptionsMenu, setShowOptionsMenu] = createSignal<boolean>(false);
-  const [viewMode, setViewMode] = createSignal<'list' | 'tree'>('tree');
-  const [sortBy, setSortBy] = createSignal<'path' | 'name' | 'status'>('path');
-  const [collapsedFolders, setCollapsedFolders] = createSignal<Record<string, boolean>>({});
+  const [viewMode, setViewMode] = createSignal<"list" | "tree">("tree");
+  const [sortBy, setSortBy] = createSignal<"path" | "name" | "status">("path");
+  const [collapsedFolders, setCollapsedFolders] = createSignal<
+    Record<string, boolean>
+  >({});
 
   const [selectedContextMenu, setSelectedContextMenu] = createSignal<{
     x: number;
@@ -44,7 +45,9 @@ export const ChangesView: Component = () => {
 
   const sortedFiles = createMemo(() => sortFiles(rawFiles(), sortBy()));
   const stagedFiles = createMemo(() => sortedFiles().filter((f) => f.staged));
-  const unstagedFiles = createMemo(() => sortedFiles().filter((f) => !f.staged));
+  const unstagedFiles = createMemo(() =>
+    sortedFiles().filter((f) => !f.staged),
+  );
 
   const stagedTree = createMemo(() => buildFileTree(stagedFiles()));
   const unstagedTree = createMemo(() => buildFileTree(unstagedFiles()));
@@ -64,41 +67,41 @@ export const ChangesView: Component = () => {
 
     try {
       await repoStore.commit(repo.path, msg, amend);
-      setCommitMessage('');
+      setCommitMessage("");
       setIsAmending(false);
       setShowCommitMenu(false);
     } catch (err) {
-      console.error('Commit failed:', err);
+      console.error("Commit failed:", err);
     }
   };
 
-  const getStatusBadge = (status: FileStatus['status']) => {
+  const getStatusBadge = (status: FileStatus["status"]) => {
     switch (status) {
-      case 'modified':
+      case "modified":
         return (
           <span class="px-1 py-0.2 bg-amber-500/15 border border-amber-500/30 text-amber-300 rounded text-[9.5px] font-mono font-bold">
             M
           </span>
         );
-      case 'staged':
+      case "staged":
         return (
           <span class="px-1 py-0.2 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 rounded text-[9.5px] font-mono font-bold">
             A
           </span>
         );
-      case 'deleted':
+      case "deleted":
         return (
           <span class="px-1 py-0.2 bg-rose-500/15 border border-rose-500/30 text-rose-400 rounded text-[9.5px] font-mono font-bold">
             D
           </span>
         );
-      case 'untracked':
+      case "untracked":
         return (
           <span class="px-1 py-0.2 bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 rounded text-[9.5px] font-mono font-bold">
             U
           </span>
         );
-      case 'conflicted':
+      case "conflicted":
         return (
           <span class="px-1 py-0.2 bg-rose-500/25 border border-rose-500/50 text-rose-300 rounded text-[9.5px] font-mono font-bold animate-pulse">
             !
@@ -118,26 +121,31 @@ export const ChangesView: Component = () => {
     if (!repo) return [];
 
     const fullPath = `${repo.path}/${file.path}`;
-    const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/')) || repo.path;
+    const dirPath =
+      fullPath.substring(0, fullPath.lastIndexOf("/")) || repo.path;
 
     return [
       {
-        id: 'open-file',
-        label: 'Open File',
+        id: "open-file",
+        label: "Open File",
         icon: <FileCode class="w-3.5 h-3.5 text-indigo-400" />,
         onClick: () => repoStore.openPath(fullPath),
       },
       {
-        id: 'open-folder',
-        label: 'Open Containing Folder',
+        id: "open-folder",
+        label: "Open Containing Folder",
         icon: <FolderOpen class="w-3.5 h-3.5 text-amber-400" />,
         onClick: () => repoStore.openPath(dirPath),
       },
-      { id: 'div-1', label: '', divider: true },
+      { id: "div-1", label: "", divider: true },
       {
-        id: 'stage-toggle',
-        label: file.staged ? 'Unstage Changes' : 'Stage Changes',
-        icon: file.staged ? <Minus class="w-3.5 h-3.5 text-amber-400" /> : <Plus class="w-3.5 h-3.5 text-emerald-400" />,
+        id: "stage-toggle",
+        label: file.staged ? "Unstage Changes" : "Stage Changes",
+        icon: file.staged ? (
+          <Minus class="w-3.5 h-3.5 text-amber-400" />
+        ) : (
+          <Plus class="w-3.5 h-3.5 text-emerald-400" />
+        ),
         onClick: () => {
           if (file.staged) {
             void repoStore.unstageFiles(repo.path, [file.path]);
@@ -147,34 +155,36 @@ export const ChangesView: Component = () => {
         },
       },
       {
-        id: 'discard',
-        label: 'Discard Changes...',
+        id: "discard",
+        label: "Discard Changes...",
         icon: <Trash2 class="w-3.5 h-3.5 text-rose-400" />,
         danger: true,
         onClick: () => {
-          if (confirm(`Discard changes to "${file.path}"? This cannot be undone.`)) {
+          if (
+            confirm(`Discard changes to "${file.path}"? This cannot be undone.`)
+          ) {
             void repoStore.discardFiles(repo.path, [file.path]);
           }
         },
       },
       {
-        id: 'gitignore',
-        label: 'Add to .gitignore',
+        id: "gitignore",
+        label: "Add to .gitignore",
         icon: <EyeOff class="w-3.5 h-3.5 text-gray-400" />,
         onClick: () => {
           void repoStore.addToGitignore(repo.path, file.path);
         },
       },
-      { id: 'div-2', label: '', divider: true },
+      { id: "div-2", label: "", divider: true },
       {
-        id: 'copy-rel',
-        label: 'Copy Relative Path',
+        id: "copy-rel",
+        label: "Copy Relative Path",
         icon: <Copy class="w-3.5 h-3.5 text-gray-400" />,
         onClick: () => navigator.clipboard.writeText(file.path),
       },
       {
-        id: 'copy-full',
-        label: 'Copy Full Path',
+        id: "copy-full",
+        label: "Copy Full Path",
         icon: <Copy class="w-3.5 h-3.5 text-gray-400" />,
         onClick: () => navigator.clipboard.writeText(fullPath),
       },
@@ -182,7 +192,11 @@ export const ChangesView: Component = () => {
   };
 
   // Render a recursive Tree Node
-  const renderTreeNode = (node: FileTreeNode, isStagedSection: boolean, depth: number = 0) => {
+  const renderTreeNode = (
+    node: FileTreeNode,
+    isStagedSection: boolean,
+    depth: number = 0,
+  ) => {
     const isFolderCollapsed = () => collapsedFolders()[node.id] || false;
 
     if (node.isFolder) {
@@ -190,17 +204,21 @@ export const ChangesView: Component = () => {
         <div class="flex flex-col">
           <div
             onClick={() => toggleFolder(node.id)}
-            style={{ 'padding-left': `${depth * 12 + 6}px` }}
+            style={{ "padding-left": `${depth * 12 + 6}px` }}
             class="flex items-center gap-1.5 py-1 hover:bg-[#1A1F2C] rounded text-gray-300 font-mono text-[11.5px] cursor-pointer select-none transition-colors"
           >
             <Show
               when={!isFolderCollapsed()}
-              fallback={<ChevronRight class="w-3 h-3 text-gray-500 flex-shrink-0" />}
+              fallback={
+                <ChevronRight class="w-3 h-3 text-gray-500 flex-shrink-0" />
+              }
             >
               <ChevronDown class="w-3 h-3 text-gray-500 flex-shrink-0" />
             </Show>
             <Folder class="w-3.5 h-3.5 text-indigo-400/80 flex-shrink-0" />
-            <span class="truncate font-semibold text-gray-200">{node.name}</span>
+            <span class="truncate font-semibold text-gray-200">
+              {node.name}
+            </span>
           </div>
 
           <Show when={!isFolderCollapsed()}>
@@ -226,15 +244,16 @@ export const ChangesView: Component = () => {
           e.stopPropagation();
           setSelectedContextMenu({ x: e.clientX, y: e.clientY, file });
         }}
-        onDblClick={() => repo && repoStore.openPath(`${repo.path}/${file.path}`)}
-        style={{ 'padding-left': `${depth * 12 + 18}px` }}
+        onDblClick={() =>
+          repo && repoStore.openPath(`${repo.path}/${file.path}`)
+        }
+        style={{ "padding-left": `${depth * 12 + 18}px` }}
         class="group flex items-center justify-between py-1 pr-2 hover:bg-[#1A1F2C] border-b border-carbon-border/30 rounded font-mono text-[11.5px] cursor-pointer transition-colors"
       >
         <div class="flex items-center gap-1.5 truncate">
           {getStatusBadge(file.status)}
           <span class="text-gray-200 truncate">{node.name}</span>
         </div>
-
 
         <div class="flex items-center gap-1">
           <Show
@@ -275,7 +294,11 @@ export const ChangesView: Component = () => {
         <span class="font-bold text-gray-200 tracking-wider text-[11px] uppercase flex items-center gap-1.5 truncate">
           <span>Source Control</span>
           <Show when={activeRepo()}>
-            {(repo) => <span class="text-indigo-300 font-bold lowercase font-mono">({repo().name})</span>}
+            {(repo) => (
+              <span class="text-indigo-300 font-bold lowercase font-mono">
+                ({repo().name})
+              </span>
+            )}
           </Show>
         </span>
 
@@ -284,15 +307,24 @@ export const ChangesView: Component = () => {
             <div class="flex items-center gap-1">
               {/* Toggle Tree / List View */}
               <button
-                onClick={() => setViewMode(viewMode() === 'tree' ? 'list' : 'tree')}
+                onClick={() =>
+                  setViewMode(viewMode() === "tree" ? "list" : "tree")
+                }
                 class={`p-1 rounded transition-colors cursor-pointer ${
-                  viewMode() === 'tree'
-                    ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-carbon-hover'
+                  viewMode() === "tree"
+                    ? "bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30"
+                    : "text-gray-400 hover:text-gray-200 hover:bg-carbon-hover"
                 }`}
-                title={viewMode() === 'tree' ? 'Switch to List View' : 'Switch to Tree View'}
+                title={
+                  viewMode() === "tree"
+                    ? "Switch to List View"
+                    : "Switch to Tree View"
+                }
               >
-                <Show when={viewMode() === 'tree'} fallback={<List class="w-3.5 h-3.5" />}>
+                <Show
+                  when={viewMode() === "tree"}
+                  fallback={<List class="w-3.5 h-3.5" />}
+                >
                   <FolderTree class="w-3.5 h-3.5" />
                 </Show>
               </button>
@@ -327,59 +359,69 @@ export const ChangesView: Component = () => {
                   <div class="absolute right-0 top-7 w-48 bg-[#141721] border border-gray-700/80 rounded-xl shadow-2xl py-1 z-40 text-xs backdrop-blur-md">
                     <button
                       onClick={() => {
-                        setViewMode('list');
+                        setViewMode("list");
                         setShowOptionsMenu(false);
                       }}
                       class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
                     >
                       <span>View as List</span>
-                      <Show when={viewMode() === 'list'}><span class="text-indigo-400">✓</span></Show>
+                      <Show when={viewMode() === "list"}>
+                        <span class="text-indigo-400">✓</span>
+                      </Show>
                     </button>
 
                     <button
                       onClick={() => {
-                        setViewMode('tree');
+                        setViewMode("tree");
                         setShowOptionsMenu(false);
                       }}
                       class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
                     >
                       <span>View as Tree</span>
-                      <Show when={viewMode() === 'tree'}><span class="text-indigo-400">✓</span></Show>
+                      <Show when={viewMode() === "tree"}>
+                        <span class="text-indigo-400">✓</span>
+                      </Show>
                     </button>
 
                     <div class="my-1 border-t border-gray-800" />
 
                     <button
                       onClick={() => {
-                        setSortBy('path');
+                        setSortBy("path");
                         setShowOptionsMenu(false);
                       }}
                       class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
                     >
                       <span>Sort by Path</span>
-                      <Show when={sortBy() === 'path'}><span class="text-indigo-400">✓</span></Show>
+                      <Show when={sortBy() === "path"}>
+                        <span class="text-indigo-400">✓</span>
+                      </Show>
                     </button>
 
                     <button
                       onClick={() => {
-                        setSortBy('name');
+                        setSortBy("name");
                         setShowOptionsMenu(false);
                       }}
                       class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
                     >
                       <span>Sort by Name</span>
-                      <Show when={sortBy() === 'name'}><span class="text-indigo-400">✓</span></Show>
+                      <Show when={sortBy() === "name"}>
+                        <span class="text-indigo-400">✓</span>
+                      </Show>
                     </button>
 
                     <button
                       onClick={() => {
-                        setSortBy('status');
+                        setSortBy("status");
                         setShowOptionsMenu(false);
                       }}
                       class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
                     >
                       <span>Sort by Status</span>
-                      <Show when={sortBy() === 'status'}><span class="text-indigo-400">✓</span></Show>
+                      <Show when={sortBy() === "status"}>
+                        <span class="text-indigo-400">✓</span>
+                      </Show>
                     </button>
 
                     <div class="my-1 border-t border-gray-800" />
@@ -420,7 +462,9 @@ export const ChangesView: Component = () => {
               >
                 <RefreshCw class="w-3.5 h-3.5" />
                 <span>
-                  Sync Changes {repo().aheadCount > 0 ? `${repo().aheadCount}↑` : ''} {repo().behindCount > 0 ? `${repo().behindCount}↓` : ''}
+                  Sync Changes{" "}
+                  {repo().aheadCount > 0 ? `${repo().aheadCount}↑` : ""}{" "}
+                  {repo().behindCount > 0 ? `${repo().behindCount}↓` : ""}
                 </span>
               </button>
             </Show>
@@ -433,7 +477,7 @@ export const ChangesView: Component = () => {
                   value={commitMessage()}
                   onInput={(e) => setCommitMessage(e.currentTarget.value)}
                   onKeyDown={(e) => {
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
                       void handleCommit(isAmending());
                     }
                   }}
@@ -450,8 +494,10 @@ export const ChangesView: Component = () => {
                   class="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-gray-950 font-bold rounded text-xs transition-colors cursor-pointer shadow-sm"
                 >
                   <Check class="w-4 h-4 stroke-[3]" />
-                  <span>{isAmending() ? 'Amend Commit' : 'Commit'}</span>
-                  <span class="text-[10px] opacity-80 font-normal">({stagedFiles().length} staged)</span>
+                  <span>{isAmending() ? "Amend Commit" : "Commit"}</span>
+                  <span class="text-[10px] opacity-80 font-normal">
+                    ({stagedFiles().length} staged)
+                  </span>
                 </button>
 
                 <div class="relative">
@@ -471,7 +517,9 @@ export const ChangesView: Component = () => {
                         }}
                         class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover text-gray-200"
                       >
-                        {isAmending() ? '✓ Amend Mode Active' : 'Toggle Amend Mode'}
+                        {isAmending()
+                          ? "✓ Amend Mode Active"
+                          : "Toggle Amend Mode"}
                       </button>
                     </div>
                   </Show>
@@ -495,29 +543,43 @@ export const ChangesView: Component = () => {
                   </div>
 
                   <Show
-                    when={viewMode() === 'tree'}
+                    when={viewMode() === "tree"}
                     fallback={
                       <div class="space-y-0.5">
                         <For each={stagedFiles()}>
                           {(file) => (
                             <div
-                              onClick={() => repoStore.selectFileForDiff(file.path, true)}
+                              onClick={() =>
+                                repoStore.selectFileForDiff(file.path, true)
+                              }
                               onContextMenu={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                setSelectedContextMenu({ x: e.clientX, y: e.clientY, file });
+                                setSelectedContextMenu({
+                                  x: e.clientX,
+                                  y: e.clientY,
+                                  file,
+                                });
                               }}
-                              onDblClick={() => repoStore.openPath(`${repo().path}/${file.path}`)}
+                              onDblClick={() =>
+                                repoStore.openPath(
+                                  `${repo().path}/${file.path}`,
+                                )
+                              }
                               class="group flex items-center justify-between px-2 py-1.5 bg-carbon-base hover:bg-[#1A1F2C] border border-carbon-border/50 rounded font-mono text-[11.5px] cursor-pointer transition-colors"
                             >
                               <div class="flex items-center gap-2 truncate">
                                 {getStatusBadge(file.status)}
-                                <span class="text-gray-200 truncate">{file.path}</span>
+                                <span class="text-gray-200 truncate">
+                                  {file.path}
+                                </span>
                               </div>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  void repoStore.unstageFiles(repo().path, [file.path]);
+                                  void repoStore.unstageFiles(repo().path, [
+                                    file.path,
+                                  ]);
                                 }}
                                 class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-carbon-elevated rounded text-gray-400 hover:text-amber-400"
                                 title="Unstage file"
@@ -562,30 +624,44 @@ export const ChangesView: Component = () => {
                   }
                 >
                   <Show
-                    when={viewMode() === 'tree'}
+                    when={viewMode() === "tree"}
                     fallback={
                       <div class="space-y-0.5">
                         <For each={unstagedFiles()}>
                           {(file) => (
                             <div
-                              onClick={() => repoStore.selectFileForDiff(file.path, false)}
+                              onClick={() =>
+                                repoStore.selectFileForDiff(file.path, false)
+                              }
                               onContextMenu={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                setSelectedContextMenu({ x: e.clientX, y: e.clientY, file });
+                                setSelectedContextMenu({
+                                  x: e.clientX,
+                                  y: e.clientY,
+                                  file,
+                                });
                               }}
-                              onDblClick={() => repoStore.openPath(`${repo().path}/${file.path}`)}
+                              onDblClick={() =>
+                                repoStore.openPath(
+                                  `${repo().path}/${file.path}`,
+                                )
+                              }
                               class="group flex items-center justify-between px-2 py-1.5 bg-carbon-base hover:bg-[#1A1F2C] border border-carbon-border/50 rounded font-mono text-[11.5px] cursor-pointer transition-colors"
                             >
                               <div class="flex items-center gap-2 truncate">
                                 {getStatusBadge(file.status)}
-                                <span class="text-gray-200 truncate">{file.path}</span>
+                                <span class="text-gray-200 truncate">
+                                  {file.path}
+                                </span>
                               </div>
                               <div class="flex items-center gap-1">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    void repoStore.stageFiles(repo().path, [file.path]);
+                                    void repoStore.stageFiles(repo().path, [
+                                      file.path,
+                                    ]);
                                   }}
                                   class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-carbon-elevated rounded text-gray-400 hover:text-emerald-400"
                                   title="Stage file"
@@ -596,7 +672,6 @@ export const ChangesView: Component = () => {
                             </div>
                           )}
                         </For>
-
                       </div>
                     }
                   >

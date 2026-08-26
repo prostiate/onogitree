@@ -1,4 +1,12 @@
-import { Component, createSignal, onCleanup, onMount, Show, For, JSX } from 'solid-js';
+import {
+  Component,
+  createSignal,
+  onCleanup,
+  onMount,
+  Show,
+  For,
+  JSX,
+} from "solid-js";
 
 export interface MenuItem {
   id: string;
@@ -31,19 +39,19 @@ export const ContextMenu: Component<ContextMenuProps> = (props) => {
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       props.onClose();
     }
   };
 
   onMount(() => {
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
   });
 
   onCleanup(() => {
-    document.removeEventListener('mousedown', handleClickOutside);
-    document.removeEventListener('keydown', handleKeyDown);
+    document.removeEventListener("mousedown", handleClickOutside);
+    document.removeEventListener("keydown", handleKeyDown);
   });
 
   // Keep menu within viewport bounds
@@ -98,10 +106,10 @@ export const ContextMenu: Component<ContextMenuProps> = (props) => {
                   }}
                   class={`w-full px-3 py-1.5 flex items-center justify-between gap-3 text-left transition-colors cursor-pointer ${
                     item.disabled
-                      ? 'opacity-40 cursor-not-allowed text-gray-500'
+                      ? "opacity-40 cursor-not-allowed text-gray-500"
                       : item.danger
-                      ? 'hover:bg-rose-500/20 text-rose-400 hover:text-rose-300'
-                      : 'hover:bg-[#1E2333] hover:text-white text-gray-300'
+                        ? "hover:bg-rose-500/20 text-rose-400 hover:text-rose-300"
+                        : "hover:bg-[#1E2333] hover:text-white text-gray-300"
                   }`}
                 >
                   <div class="flex items-center gap-2 truncate">
@@ -132,7 +140,9 @@ export const ContextMenu: Component<ContextMenuProps> = (props) => {
                       {(sub) => (
                         <Show
                           when={!sub.divider}
-                          fallback={<div class="my-1 border-t border-gray-800" />}
+                          fallback={
+                            <div class="my-1 border-t border-gray-800" />
+                          }
                         >
                           <button
                             type="button"
@@ -146,7 +156,9 @@ export const ContextMenu: Component<ContextMenuProps> = (props) => {
                             }}
                             class="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-[#1E2333] hover:text-white text-gray-300 transition-colors cursor-pointer"
                           >
-                            <span class="truncate font-medium">{sub.label}</span>
+                            <span class="truncate font-medium">
+                              {sub.label}
+                            </span>
                           </button>
                         </Show>
                       )}

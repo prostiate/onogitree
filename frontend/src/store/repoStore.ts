@@ -1,6 +1,11 @@
-import { createSignal, createMemo, createRoot } from 'solid-js';
-import { RepoStatus, WorkspaceRecord, CommitSummary, CommitDetail } from '../types/git';
-import { WailsBridge } from '../services/wailsBridge';
+import { createSignal, createMemo, createRoot } from "solid-js";
+import {
+  RepoStatus,
+  WorkspaceRecord,
+  CommitSummary,
+  CommitDetail,
+} from "../types/git";
+import { WailsBridge } from "../services/wailsBridge";
 
 export interface DiffSelection {
   filePath: string;
@@ -11,13 +16,17 @@ export interface DiffSelection {
 function createRepoStore() {
   const [repositories, setRepositories] = createSignal<RepoStatus[]>([]);
   const [selectedRepoId, setSelectedRepoId] = createSignal<string | null>(null);
-  const [searchQuery, setSearchQuery] = createSignal<string>('');
+  const [searchQuery, setSearchQuery] = createSignal<string>("");
   const [isLoading, setIsLoading] = createSignal<boolean>(false);
-  const [activeWorkspace, setActiveWorkspace] = createSignal<WorkspaceRecord | null>(null);
-  const [selectedFileDiff, setSelectedFileDiff] = createSignal<DiffSelection | null>(null);
+  const [activeWorkspace, setActiveWorkspace] =
+    createSignal<WorkspaceRecord | null>(null);
+  const [selectedFileDiff, setSelectedFileDiff] =
+    createSignal<DiffSelection | null>(null);
   const [recentCommits, setRecentCommits] = createSignal<CommitSummary[]>([]);
-  const [selectedCommitDetail, setSelectedCommitDetail] = createSignal<CommitDetail | null>(null);
-  const [isLoadingCommitDetail, setIsLoadingCommitDetail] = createSignal<boolean>(false);
+  const [selectedCommitDetail, setSelectedCommitDetail] =
+    createSignal<CommitDetail | null>(null);
+  const [isLoadingCommitDetail, setIsLoadingCommitDetail] =
+    createSignal<boolean>(false);
 
   const selectedRepo = createMemo(() => {
     const id = selectedRepoId();
@@ -30,14 +39,16 @@ function createRepoStore() {
     const list = repositories();
     if (!query) {
       // Sort pinned to top
-      return [...list].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
+      return [...list].sort(
+        (a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0),
+      );
     }
     return list
       .filter(
         (r) =>
           r.name.toLowerCase().includes(query) ||
           r.currentBranch.toLowerCase().includes(query) ||
-          r.path.toLowerCase().includes(query)
+          r.path.toLowerCase().includes(query),
       )
       .sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
   });
@@ -79,10 +90,13 @@ function createRepoStore() {
       if (!repo) return;
       setIsLoadingCommitDetail(true);
       try {
-        const detail = await WailsBridge.getCommitDetails(repo.path, commitHash);
+        const detail = await WailsBridge.getCommitDetails(
+          repo.path,
+          commitHash,
+        );
         setSelectedCommitDetail(detail);
       } catch (err) {
-        console.error('Failed to load commit details:', err);
+        console.error("Failed to load commit details:", err);
         setSelectedCommitDetail(null);
       } finally {
         setIsLoadingCommitDetail(false);
@@ -98,7 +112,7 @@ function createRepoStore() {
         const commits = await WailsBridge.getRecentCommits(repoPath, 15);
         setRecentCommits(commits);
       } catch (err) {
-        console.error('Failed to load recent commits:', err);
+        console.error("Failed to load recent commits:", err);
       }
     },
 
@@ -114,7 +128,7 @@ function createRepoStore() {
           void this.loadRecentCommits(statuses[0].path);
         }
       } catch (err) {
-        console.error('Failed to load workspace:', err);
+        console.error("Failed to load workspace:", err);
       } finally {
         setIsLoading(false);
       }
@@ -132,7 +146,7 @@ function createRepoStore() {
         setSelectedRepoId(status.id);
         void this.loadRecentCommits(status.path);
       } catch (err) {
-        console.error('Failed to add repository:', err);
+        console.error("Failed to add repository:", err);
         throw err;
       } finally {
         setIsLoading(false);
@@ -151,7 +165,7 @@ function createRepoStore() {
           }
         }
       } catch (err) {
-        console.error('Failed to remove repository:', err);
+        console.error("Failed to remove repository:", err);
       }
     },
 
@@ -162,10 +176,10 @@ function createRepoStore() {
       try {
         await WailsBridge.togglePin(id, newPinned);
         setRepositories((prev) =>
-          prev.map((r) => (r.id === id ? { ...r, isPinned: newPinned } : r))
+          prev.map((r) => (r.id === id ? { ...r, isPinned: newPinned } : r)),
         );
       } catch (err) {
-        console.error('Failed to toggle pin:', err);
+        console.error("Failed to toggle pin:", err);
       }
     },
 
@@ -176,20 +190,24 @@ function createRepoStore() {
       try {
         await WailsBridge.toggleAutoFetch(id, newAutoFetch);
         setRepositories((prev) =>
-          prev.map((r) => (r.id === id ? { ...r, autoFetchEnabled: newAutoFetch } : r))
+          prev.map((r) =>
+            r.id === id ? { ...r, autoFetchEnabled: newAutoFetch } : r,
+          ),
         );
       } catch (err) {
-        console.error('Failed to toggle auto fetch:', err);
+        console.error("Failed to toggle auto fetch:", err);
       }
     },
 
     async refreshRepo(path: string) {
       try {
         const status = await WailsBridge.getRepoStatus(path);
-        setRepositories((prev) => prev.map((r) => (r.id === path ? status : r)));
+        setRepositories((prev) =>
+          prev.map((r) => (r.id === path ? status : r)),
+        );
         void this.loadRecentCommits(path);
       } catch (err) {
-        console.error('Failed to refresh repo status:', err);
+        console.error("Failed to refresh repo status:", err);
       }
     },
 
@@ -203,7 +221,7 @@ function createRepoStore() {
           void this.loadRecentCommits(selId);
         }
       } catch (err) {
-        console.error('Failed to refresh all repos:', err);
+        console.error("Failed to refresh all repos:", err);
       } finally {
         setIsLoading(false);
       }
@@ -215,7 +233,7 @@ function createRepoStore() {
         await WailsBridge.checkoutBranch(repoPath, branchName);
         await this.refreshRepo(repoPath);
       } catch (err) {
-        console.error('Failed to checkout branch:', err);
+        console.error("Failed to checkout branch:", err);
         throw err;
       } finally {
         setIsLoading(false);
@@ -227,7 +245,7 @@ function createRepoStore() {
         await WailsBridge.stageFiles(repoPath, files);
         await this.refreshRepo(repoPath);
       } catch (err) {
-        console.error('Failed to stage files:', err);
+        console.error("Failed to stage files:", err);
       }
     },
 
@@ -236,19 +254,22 @@ function createRepoStore() {
         await WailsBridge.unstageFiles(repoPath, files);
         await this.refreshRepo(repoPath);
       } catch (err) {
-        console.error('Failed to unstage files:', err);
+        console.error("Failed to unstage files:", err);
       }
     },
 
     async discardFiles(repoPath: string, files: string[]) {
       try {
         await WailsBridge.discardFiles(repoPath, files);
-        if (selectedFileDiff() && files.includes(selectedFileDiff()!.filePath)) {
+        if (
+          selectedFileDiff() &&
+          files.includes(selectedFileDiff()!.filePath)
+        ) {
           setSelectedFileDiff(null);
         }
         await this.refreshRepo(repoPath);
       } catch (err) {
-        console.error('Failed to discard files:', err);
+        console.error("Failed to discard files:", err);
       }
     },
 
@@ -256,7 +277,7 @@ function createRepoStore() {
       try {
         await WailsBridge.openPathInSystem(targetPath);
       } catch (err) {
-        console.error('Failed to open path:', err);
+        console.error("Failed to open path:", err);
       }
     },
 
@@ -265,7 +286,7 @@ function createRepoStore() {
         await WailsBridge.addToGitignore(repoPath, pattern);
         await this.refreshRepo(repoPath);
       } catch (err) {
-        console.error('Failed to add to gitignore:', err);
+        console.error("Failed to add to gitignore:", err);
       }
     },
 
@@ -275,7 +296,7 @@ function createRepoStore() {
         await WailsBridge.commit(repoPath, message, amend);
         await this.refreshRepo(repoPath);
       } catch (err) {
-        console.error('Failed to commit:', err);
+        console.error("Failed to commit:", err);
         throw err;
       } finally {
         setIsLoading(false);
@@ -288,7 +309,7 @@ function createRepoStore() {
         await WailsBridge.pushRepository(repoPath);
         await this.refreshRepo(repoPath);
       } catch (err) {
-        console.error('Failed to push:', err);
+        console.error("Failed to push:", err);
         throw err;
       } finally {
         setIsLoading(false);

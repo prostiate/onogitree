@@ -1,7 +1,7 @@
-import { Component, createSignal, Show } from 'solid-js';
-import { X, ArrowDownToLine, AlertTriangle, CheckCircle2 } from 'lucide-solid';
-import { repoStore } from '../../store/repoStore';
-import { batchStore } from '../../store/batchStore';
+import { Component, createSignal, Show } from "solid-js";
+import { X, ArrowDownToLine, AlertTriangle, CheckCircle2 } from "lucide-solid";
+import { repoStore } from "../../store/repoStore";
+import { batchStore } from "../../store/batchStore";
 
 export const PullAllModal: Component = () => {
   const [skipDirty, setSkipDirty] = createSignal<boolean>(true);
@@ -18,7 +18,9 @@ export const PullAllModal: Component = () => {
           <div class="px-4 py-3 bg-carbon-elevated border-b border-carbon-border flex items-center justify-between">
             <div class="flex items-center gap-2">
               <ArrowDownToLine class="w-4 h-4 text-git-emerald" />
-              <span class="font-semibold text-gray-200 text-sm">Pull All Repositories</span>
+              <span class="font-semibold text-gray-200 text-sm">
+                Pull All Repositories
+              </span>
             </div>
             <button
               onClick={() => batchStore.setIsPullModalOpen(false)}
@@ -31,7 +33,8 @@ export const PullAllModal: Component = () => {
           {/* Content */}
           <div class="p-4 space-y-4">
             <p class="text-gray-300">
-              You are about to pull latest remote changes for <strong class="text-white">{repos().length} repositories</strong>.
+              You are about to pull latest remote changes for{" "}
+              <strong class="text-white">{repos().length} repositories</strong>.
             </p>
 
             <div class="bg-carbon-base border border-carbon-border rounded p-3 space-y-2">
@@ -40,7 +43,9 @@ export const PullAllModal: Component = () => {
                   <CheckCircle2 class="w-3.5 h-3.5 text-git-emerald" />
                   <span>Clean Repositories:</span>
                 </span>
-                <strong class="font-mono text-git-emerald">{cleanCount()}</strong>
+                <strong class="font-mono text-git-emerald">
+                  {cleanCount()}
+                </strong>
               </div>
 
               <div class="flex items-center justify-between text-gray-300">
@@ -59,7 +64,9 @@ export const PullAllModal: Component = () => {
                 onChange={(e) => setSkipDirty(e.currentTarget.checked)}
                 class="rounded border-carbon-border text-git-indigo focus:ring-0 bg-carbon-base"
               />
-              <span>Safely skip repositories with uncommitted changes (Recommended)</span>
+              <span>
+                Safely skip repositories with uncommitted changes (Recommended)
+              </span>
             </label>
           </div>
 
@@ -83,4 +90,3 @@ export const PullAllModal: Component = () => {
     </Show>
   );
 };
-

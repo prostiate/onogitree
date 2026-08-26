@@ -1,8 +1,8 @@
-import { Component, For, Show } from 'solid-js';
-import { FolderGit2, Plus, RefreshCw } from 'lucide-solid';
-import { RepoStatus } from '../../types/git';
-import { repoStore } from '../../store/repoStore';
-import { RepoRow } from './RepoRow';
+import { Component, For, Show } from "solid-js";
+import { FolderGit2, Plus, RefreshCw } from "lucide-solid";
+import { RepoStatus } from "../../types/git";
+import { repoStore } from "../../store/repoStore";
+import { RepoRow } from "./RepoRow";
 
 interface RepoTreeProps {
   onOpenRepoModal: () => void;
@@ -27,7 +27,9 @@ export const RepoTree: Component<RepoTreeProps> = (props) => {
             class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 transition-colors"
             title="Refresh All Repositories"
           >
-            <RefreshCw class={`w-3 h-3 ${repoStore.isLoading() ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              class={`w-3 h-3 ${repoStore.isLoading() ? "animate-spin" : ""}`}
+            />
           </button>
 
           <button

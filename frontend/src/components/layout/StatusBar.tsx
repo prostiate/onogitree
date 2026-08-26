@@ -1,8 +1,8 @@
-import { Component, createSignal, onMount, onCleanup, Show } from 'solid-js';
-import { Cpu, GitBranch, HardDrive, ShieldCheck } from 'lucide-solid';
-import { WailsBridge } from '../../services/wailsBridge';
-import { repoStore } from '../../store/repoStore';
-import { ResourceStats } from '../../types/git';
+import { Component, createSignal, onMount, onCleanup, Show } from "solid-js";
+import { Cpu, GitBranch, HardDrive, ShieldCheck } from "lucide-solid";
+import { WailsBridge } from "../../services/wailsBridge";
+import { repoStore } from "../../store/repoStore";
+import { ResourceStats } from "../../types/git";
 
 export const StatusBar: Component = () => {
   const [stats, setStats] = createSignal<ResourceStats>({
@@ -46,7 +46,9 @@ export const StatusBar: Component = () => {
           {(repo) => (
             <span class="flex items-center gap-1 text-gray-300 border-l border-carbon-border pl-3">
               <GitBranch class="w-3 h-3 text-git-indigo" />
-              <span class="text-git-indigo font-medium">{repo().currentBranch}</span>
+              <span class="text-git-indigo font-medium">
+                {repo().currentBranch}
+              </span>
               <span class="text-gray-500">({repo().name})</span>
             </span>
           )}
@@ -55,18 +57,39 @@ export const StatusBar: Component = () => {
 
       {/* Right: Live Telemetry Metrics */}
       <div class="flex items-center gap-4 text-[10.5px]">
-        <div class="flex items-center gap-1 text-gray-300" title="Resident Go Runtime RAM">
+        <div
+          class="flex items-center gap-1 text-gray-300"
+          title="Resident Go Runtime RAM"
+        >
           <HardDrive class="w-3 h-3 text-git-cyan" />
-          <span>RAM: <strong class="text-git-emerald font-bold tabular-nums">{stats().allocRamMb.toFixed(1)} MB</strong></span>
+          <span>
+            RAM:{" "}
+            <strong class="text-git-emerald font-bold tabular-nums">
+              {stats().allocRamMb.toFixed(1)} MB
+            </strong>
+          </span>
         </div>
 
-        <div class="flex items-center gap-1 text-gray-400" title="Active Background Goroutines">
+        <div
+          class="flex items-center gap-1 text-gray-400"
+          title="Active Background Goroutines"
+        >
           <Cpu class="w-3 h-3 text-git-indigo" />
-          <span>Goroutines: <strong class="text-gray-200 tabular-nums">{stats().numGoroutine}</strong></span>
+          <span>
+            Goroutines:{" "}
+            <strong class="text-gray-200 tabular-nums">
+              {stats().numGoroutine}
+            </strong>
+          </span>
         </div>
 
         <div class="flex items-center gap-1 text-gray-400">
-          <span>Repos: <strong class="text-gray-200 tabular-nums">{repoStore.repositories().length} Active</strong></span>
+          <span>
+            Repos:{" "}
+            <strong class="text-gray-200 tabular-nums">
+              {repoStore.repositories().length} Active
+            </strong>
+          </span>
         </div>
 
         <div class="flex items-center gap-1 text-gray-500 border-l border-carbon-border pl-3">

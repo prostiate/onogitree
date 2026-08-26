@@ -1,4 +1,4 @@
-import { FileStatus } from '../types/git';
+import { FileStatus } from "../types/git";
 
 export interface FileTreeNode {
   id: string;
@@ -22,9 +22,9 @@ export function buildFileTree(files: FileStatus[]): FileTreeNode[] {
   const rootMap = new Map<string, MutableNode>();
 
   for (const file of files) {
-    const parts = file.path.split('/');
+    const parts = file.path.split("/");
     let currentMap = rootMap;
-    let accumulatedPath = '';
+    let accumulatedPath = "";
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
@@ -82,15 +82,15 @@ export function buildFileTree(files: FileStatus[]): FileTreeNode[] {
 
 export function sortFiles(
   files: FileStatus[],
-  sortBy: 'path' | 'name' | 'status'
+  sortBy: "path" | "name" | "status",
 ): FileStatus[] {
   return [...files].sort((a, b) => {
-    if (sortBy === 'name') {
-      const nameA = a.path.split('/').pop() || '';
-      const nameB = b.path.split('/').pop() || '';
+    if (sortBy === "name") {
+      const nameA = a.path.split("/").pop() || "";
+      const nameB = b.path.split("/").pop() || "";
       return nameA.localeCompare(nameB);
     }
-    if (sortBy === 'status') {
+    if (sortBy === "status") {
       return a.status.localeCompare(b.status);
     }
     return a.path.localeCompare(b.path);
