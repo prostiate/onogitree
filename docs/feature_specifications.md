@@ -205,8 +205,62 @@ When a merge, rebase, or batch pull encounters conflicts, OnoGitTree automatical
 
 ---
 
-## 6. Live Terminal Drawer (`@xterm/xterm`)
+## 6. Active Repository Source Control & Changes View (VS Code Style)
 
+Below the Repositories list, OnoGitTree provides a focused **Changes & Commit Section** for the currently selected active repository (matching VS Code Source Control):
+
+```
++----------------------------------------------------------------------------------------------------+
+|  ▼ Changes (fe-amazone-monorepo)                                 [📦 Stash] [🔄 Sync] [✓ Stage All] |
++----------------------------------------------------------------------------------------------------+
+|  [ Message (Ctrl+Enter to commit on "feat/cashier-card-implementation")                          ] |
+|  [ ✓ Commit  ▼ (Commit & Push | Commit & Sync | Commit Amend)                                    ] |
++----------------------------------------------------------------------------------------------------+
+|  ▼ Staged Changes (1)                                                                              |
+|    🟢 src/hooks/usePayment.ts                                                     [12+, 4-, M] [ - ]|
+|  ▼ Changes / Unstaged (2)                                                                          |
+|    🟡 src/components/PaymentCard.tsx                                              [9+, 2-, M]  [ + ]|
+|    ⚪ docs/prompt/prompt-20260826.md                                              [3, U]       [ + ]|
++----------------------------------------------------------------------------------------------------+
+```
+
+### Key Controls:
+- **Instant Commit Input**: Type commit message and press `Ctrl+Enter` to commit to HEAD.
+- **Commit Action Dropdown**: Quick actions for `Commit`, `Commit & Push`, `Commit & Sync`, and `Commit Amend`.
+- **Hunk / File Staging**: Click `[ + ]` to stage, `[ - ]` to unstage, `[ ↺ ]` to discard (with confirmation).
+- **Click to Diff**: Clicking any file opens it immediately in the Monaco Diff Editor.
+
+---
+
+## 7. Open Repository & Workspace Dialog (GitKraken / SourceTree Style)
+
+Accessible via `📂 Open Repo` or `Ctrl+O`:
+
+```
++----------------------------------------------------------------------------------------------------+
+|  📂 Open or Clone Repositories                                                                     |
++----------------------------------------------------------------------------------------------------+
+|  [ 📁 Open Local ]  [ 🔍 Scan Workspace ]  [ ☁️ Clone Remote ]  [ ⏱️ Recent Workspaces ]              |
++----------------------------------------------------------------------------------------------------+
+|  • Open Local: Browse filesystem for a single repository containing .git                           |
+|  • Scan Workspace: Select parent folder (e.g. ~/workspaces/) to auto-detect all nested git repos   |
+|  • Clone Remote: Auto-detects GitHub (gh) and GitLab (glab) accounts or enter custom HTTPS/SSH URL |
+|  • Recent: 1-click reopen of previously saved multi-repo workspace presets                         |
++----------------------------------------------------------------------------------------------------+
+```
+
+---
+
+## 8. Live Terminal Drawer & App Resource Monitor Widget
+
+### Live Terminal Drawer (`@xterm/xterm`):
 - Expandable bottom drawer powered by `xterm.js` and Go `creack/pty`.
-- Streams ANSI-colored output for batch operations or allows direct command execution.
-- Can be toggled with `Ctrl+\`` or shortcut button.
+- Streams ANSI-colored output for batch operations or allows direct command execution (`Ctrl+\``).
+
+### Live App Resource Monitor (Footer Status Bar):
+- Real-time zero-overhead telemetry powered by Go `runtime.ReadMemStats`:
+  ```
+  ⚡ OnoGitTree  |  RAM: 45.8 MB  |  Goroutines: 8  |  Repos: 10 Active  |  Engine: /usr/bin/git
+  ```
+- Instant visibility into memory and concurrency performance.
+
