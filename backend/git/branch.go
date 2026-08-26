@@ -256,11 +256,15 @@ func (s *BranchService) GetCommitDetails(ctx context.Context, repoPath string, c
 	return detail, nil
 }
 
-// GetCommitFileDiff returns unified diff for a file in a specific commit.
+// GetCommitFileDiff returns unified diff for a file in a specific commit, or entire commit diff if filePath is empty or "__ALL__".
 func (s *BranchService) GetCommitFileDiff(ctx context.Context, repoPath string, commitHash string, filePath string) (string, error) {
+	if filePath == "" || filePath == "__ALL__" {
+		return s.runner.Run(ctx, repoPath, "show", commitHash)
+	}
 	out, err := s.runner.Run(ctx, repoPath, "show", commitHash, "--", filePath)
 	return out, err
 }
+
 
 
 

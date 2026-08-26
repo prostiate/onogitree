@@ -185,7 +185,9 @@ export const DiffViewer: Component = () => {
               <div class="min-w-0">
                 <div class="flex items-center gap-2">
                   <span class="font-bold text-white text-sm font-mono truncate">
-                    {diff().filePath}
+                    {diff().filePath && diff().filePath !== "__ALL__"
+                      ? diff().filePath
+                      : `Entire Commit Diff (${diff().commitHash?.slice(0, 7)})`}
                   </span>
 
                   <Show
@@ -203,12 +205,16 @@ export const DiffViewer: Component = () => {
                     }
                   >
                     <span class="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded text-[10px] font-mono font-bold">
-                      Commit {diff().commitHash?.slice(0, 7)}
+                      {diff().filePath && diff().filePath !== "__ALL__"
+                        ? `Commit ${diff().commitHash?.slice(0, 7)}`
+                        : "All Changed Files"}
                     </span>
                   </Show>
                 </div>
                 <p class="text-[11px] text-gray-500 font-mono truncate">
-                  {activeRepo()?.path}/{diff().filePath}
+                  {diff().filePath && diff().filePath !== "__ALL__"
+                    ? `${activeRepo()?.path}/${diff().filePath}`
+                    : `${activeRepo()?.name} • All modified hunks across this commit`}
                 </p>
               </div>
             </div>

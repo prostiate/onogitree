@@ -42,31 +42,185 @@
     background-color: #101010 !important;
   }
 
-  /* Light Theme */
+  /* ------------------------------------------------------------- */
+  /* Warm Eye-Friendly Light Theme                                 */
+  /* ------------------------------------------------------------- */
+  html.theme-light {
+    color-scheme: light;
+  }
+
   html.theme-light,
   html.theme-light body,
   html.theme-light .bg-carbon-base {
-    background-color: #f8fafc !important;
-    color: #0f172a !important;
+    background-color: #f7f5f0 !important;
+    color: #1e232e !important;
   }
+
   html.theme-light .bg-carbon-surface {
     background-color: #ffffff !important;
-    border-color: #e2e8f0 !important;
-    color: #0f172a !important;
+    border-color: #e2ddd5 !important;
+    color: #1e232e !important;
   }
+
   html.theme-light .bg-carbon-elevated {
-    background-color: #f1f5f9 !important;
-    border-color: #cbd5e1 !important;
-    color: #0f172a !important;
+    background-color: #ede9e0 !important;
+    border-color: #dcd6cb !important;
+    color: #1e232e !important;
   }
+
+  html.theme-light .bg-carbon-border {
+    background-color: #e2ddd5 !important;
+  }
+
+  /* Form & inputs in light theme */
+  html.theme-light select,
+  html.theme-light select option,
+  html.theme-light input,
+  html.theme-light textarea {
+    background-color: #ffffff !important;
+    color: #1e232e !important;
+    border-color: #d8d2c5 !important;
+  }
+
+  /* Dark arbitrary containers mapped to warm light containers */
+  html.theme-light .bg-\[\#11141D\],
+  html.theme-light .bg-\[\#121622\],
+  html.theme-light .bg-\[\#0B0E14\],
+  html.theme-light .bg-\[\#0A0D14\] {
+    background-color: #ffffff !important;
+    border-color: #e4dfd7 !important;
+    color: #1e232e !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  html.theme-light .bg-\[\#171B26\],
+  html.theme-light .bg-\[\#181D2B\],
+  html.theme-light .bg-\[\#141824\],
+  html.theme-light .bg-\[\#151926\],
+  html.theme-light .bg-\[\#161B26\],
+  html.theme-light .bg-\[\#0D1017\],
+  html.theme-light .bg-\[\#0A0C13\],
+  html.theme-light .bg-\[\#0E121B\] {
+    background-color: #f4f1ea !important;
+    border-color: #e2ddd5 !important;
+    color: #1e232e !important;
+  }
+
+  html.theme-light .bg-\[\#121624\] {
+    background-color: #eef2ff !important;
+    border-color: #c7d2fe !important;
+  }
+
+  html.theme-light .hover\:bg-\[\#141824\]:hover,
+  html.theme-light .hover\:bg-\[\#151926\]:hover,
+  html.theme-light .hover\:bg-\[\#161B26\]:hover,
+  html.theme-light .hover\:bg-\[\#1A1F2C\]:hover,
+  html.theme-light .hover\:bg-\[\#1E2436\]:hover,
+  html.theme-light .hover\:bg-\[\#1E2333\]:hover,
+  html.theme-light .hover\:bg-\[\#202534\]:hover,
+  html.theme-light .hover\:bg-\[\#22293D\]:hover,
+  html.theme-light .hover\:bg-carbon-hover:hover {
+    background-color: #eae5db !important;
+  }
+
+  html.theme-light .bg-carbon-base\/50 {
+    background-color: rgba(247, 245, 240, 0.6) !important;
+  }
+
+  /* Borders */
+  html.theme-light .border-gray-800,
+  html.theme-light .border-gray-800\/80,
+  html.theme-light .border-gray-800\/60,
+  html.theme-light .border-gray-800\/40,
+  html.theme-light .border-gray-700,
+  html.theme-light .border-gray-700\/80,
+  html.theme-light .border-gray-700\/60 {
+    border-color: #e2ddd5 !important;
+  }
+
+  html.theme-light .divide-gray-800 > :not([hidden]) ~ :not([hidden]),
+  html.theme-light .divide-gray-800\/60 > :not([hidden]) ~ :not([hidden]),
+  html.theme-light .divide-gray-800\/40 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #eae6de !important;
+  }
+
+  /* Typography */
+  html.theme-light .text-white,
   html.theme-light .text-gray-100,
   html.theme-light .text-gray-200,
   html.theme-light .text-gray-300 {
-    color: #1e293b !important;
+    color: #1e232e !important;
   }
-  html.theme-light .text-gray-400,
-  html.theme-light .text-gray-500 {
-    color: #64748b !important;
+
+  html.theme-light .text-gray-400 {
+    color: #555d6e !important;
+  }
+
+  html.theme-light .text-gray-500,
+  html.theme-light .text-gray-600 {
+    color: #727c8e !important;
+  }
+
+  /* Status Badges & Accents in Light Theme */
+  html.theme-light .bg-indigo-500\/10,
+  html.theme-light .bg-indigo-500\/15,
+  html.theme-light .bg-indigo-500\/20 {
+    background-color: #eef2ff !important;
+    border-color: #c7d2fe !important;
+    color: #4338ca !important;
+  }
+
+  html.theme-light .bg-emerald-500\/15,
+  html.theme-light .bg-emerald-500\/20 {
+    background-color: #ecfdf5 !important;
+    border-color: #a7f3d0 !important;
+    color: #065f46 !important;
+  }
+
+  html.theme-light .bg-amber-500\/15,
+  html.theme-light .bg-amber-500\/20 {
+    background-color: #fffbeb !important;
+    border-color: #fde68a !important;
+    color: #92400e !important;
+  }
+
+  html.theme-light .bg-rose-500\/15,
+  html.theme-light .bg-rose-500\/20 {
+    background-color: #fef2f2 !important;
+    border-color: #fecaca !important;
+    color: #991b1b !important;
+  }
+
+  html.theme-light .bg-cyan-500\/15,
+  html.theme-light .bg-cyan-500\/20 {
+    background-color: #ecfeff !important;
+    border-color: #a5f3fc !important;
+    color: #155e75 !important;
+  }
+
+  /* Diff Viewer Lines in Light Theme */
+  html.theme-light .bg-emerald-500\/15.text-emerald-200 {
+    background-color: #e6f9f0 !important;
+    color: #064e3b !important;
+    border-left-color: #10b981 !important;
+  }
+  html.theme-light .bg-emerald-500\/15.text-emerald-200 pre {
+    color: #064e3b !important;
+  }
+
+  html.theme-light .bg-rose-500\/15.text-rose-300 {
+    background-color: #feeceb !important;
+    color: #7f1d1d !important;
+    border-left-color: #ef4444 !important;
+  }
+  html.theme-light .bg-rose-500\/15.text-rose-300 pre {
+    color: #7f1d1d !important;
+  }
+
+  html.theme-light .bg-\[\#161B2B\] {
+    background-color: #eae5da !important;
+    color: #3730a3 !important;
+    border-color: #d6cebe !important;
   }
 }
 
@@ -84,4 +238,11 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #3d455c;
+}
+
+html.theme-light ::-webkit-scrollbar-thumb {
+  background: #d1c9bc;
+}
+html.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: #b8afa0;
 }
