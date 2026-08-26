@@ -256,6 +256,16 @@ func (a *App) GetResourceStats() system.ResourceStats {
 	return a.telemetry.GetStats()
 }
 
+// SelectDirectory opens native OS directory chooser dialog and returns the selected directory path.
+func (a *App) SelectDirectory(title string) (string, error) {
+	if title == "" {
+		title = "Select Repository Directory"
+	}
+	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: title,
+	})
+}
+
 // CheckCLIAuth checks if GitHub (gh) and GitLab (glab) CLIs are authenticated on the host.
 func (a *App) CheckCLIAuth() map[string]bool {
 	status := map[string]bool{
@@ -272,3 +282,4 @@ func (a *App) CheckCLIAuth() map[string]bool {
 
 	return status
 }
+

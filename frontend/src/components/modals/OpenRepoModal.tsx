@@ -2,6 +2,7 @@ import { Component, createSignal, For, onMount, Show } from 'solid-js';
 import { 
   X, 
   FolderPlus, 
+  FolderOpen,
   Search, 
   FolderGit2, 
   CloudDownload, 
@@ -47,6 +48,36 @@ export const OpenRepoModal: Component<OpenRepoModalProps> = (props) => {
       // ignore
     }
   });
+
+  const handleBrowseScan = async () => {
+    const selected = await WailsBridge.selectDirectory('Select Workspace Directory to Scan');
+    if (selected) {
+      setScanPath(selected);
+      // Auto trigger scan
+      setIsScanning(true);
+      try {
+        const repos = await WailsBridge.scanDirectory(selected, scanDepth());
+        setDiscoveredRepos(repos);
+        const allPaths = new Set<string>();
+        for (const r of repos) {
+          allPaths.add(r.path);
+        }
+        setSelectedPaths(allPaths);
+      } catch (err) {
+        console.error('Scan failed:', err);
+      } finally {
+        setIsScanning(false);
+      }
+    }
+  };
+
+  const handleBrowseLocal = async () => {
+    const selected = await WailsBridge.selectDirectory('Select Local Git Repository Folder');
+    if (selected) {
+      setLocalPath(selected);
+    }
+  };
+
 
   const handleScan = async () => {
     const path = scanPath().trim();
@@ -188,6 +219,14 @@ export const OpenRepoModal: Component<OpenRepoModalProps> = (props) => {
                     class="flex-1 px-3 py-1.5 bg-carbon-base border border-carbon-border rounded text-gray-200 font-mono text-xs focus:outline-none focus:border-git-indigo"
                   />
                   <button
+                    onClick={handleBrowseScan}
+                    class="px-3 py-1.5 bg-carbon-elevated hover:bg-carbon-hover border border-carbon-border text-gray-200 font-medium rounded text-xs flex items-center gap-1.5 cursor-pointer"
+                    title="Browse directory on computer"
+                  >
+                    <FolderOpen class="w-3.5 h-3.5 text-git-indigo" />
+                    <span>Browse...</span>
+                  </button>
+                  <button
                     onClick={handleScan}
                     disabled={isScanning() || !scanPath().trim()}
                     class="px-4 py-1.5 bg-git-indigo hover:bg-git-indigo/90 disabled:opacity-40 text-white font-medium rounded text-xs flex items-center gap-1.5 cursor-pointer"
@@ -198,6 +237,7 @@ export const OpenRepoModal: Component<OpenRepoModalProps> = (props) => {
                     <span>Scan Folder</span>
                   </button>
                 </div>
+
 
                 {/* Discovered List */}
                 <Show when={discoveredRepos().length > 0}>
@@ -244,7 +284,7 @@ export const OpenRepoModal: Component<OpenRepoModalProps> = (props) => {
             {/* TAB 2: Open Local Folder */}
             <Show when={activeTab() === 'local'}>
               <div class="space-y-4">
-                <p class="text-gray-400">Specify the path to a single Git repository on your filesystem:</p>
+                <p class="text-gray-400">Specify or browse for a Git repository folder on your computer:</p>
                 <div class="flex gap-2">
                   <input
                     type="text"
@@ -253,6 +293,14 @@ export const OpenRepoModal: Component<OpenRepoModalProps> = (props) => {
                     onInput={(e) => setLocalPath(e.currentTarget.value)}
                     class="flex-1 px-3 py-1.5 bg-carbon-base border border-carbon-border rounded text-gray-200 font-mono text-xs focus:outline-none focus:border-git-indigo"
                   />
+                  <button
+                    onClick={handleBrowseLocal}
+                    class="px-3 py-1.5 bg-carbon-elevated hover:bg-carbon-hover border border-carbon-border text-gray-200 font-medium rounded text-xs flex items-center gap-1.5 cursor-pointer"
+                    title="Browse directory on computer"
+                  >
+                    <FolderOpen class="w-3.5 h-3.5 text-git-indigo" />
+                    <span>Browse...</span>
+                  </button>
                   <button
                     onClick={handleAddSingleLocal}
                     disabled={!localPath().trim()}
@@ -263,6 +311,7 @@ export const OpenRepoModal: Component<OpenRepoModalProps> = (props) => {
                 </div>
               </div>
             </Show>
+
 
             {/* TAB 3: Clone Remote */}
             <Show when={activeTab() === 'clone'}>

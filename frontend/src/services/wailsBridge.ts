@@ -199,6 +199,17 @@ export const WailsBridge = {
     }
   },
 
+  async selectDirectory(title: string = 'Select Repository Directory'): Promise<string> {
+    try {
+      return await App.SelectDirectory(title);
+    } catch (err) {
+      console.error('SelectDirectory error:', err);
+    }
+    return '';
+  },
+
+
+
   onBatchProgress(callback: (event: BatchProgressEvent) => void): () => void {
     try {
       if (typeof Runtime.EventsOn === 'function') {
