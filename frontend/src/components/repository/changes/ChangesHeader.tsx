@@ -3,8 +3,6 @@ import {
   List,
   FolderTree,
   ChevronsUpDown,
-  Plus,
-  Minus,
   MoreHorizontal,
   GitBranch,
   FolderGit2,
@@ -12,6 +10,9 @@ import {
   FileDiff,
   ChevronDown,
   ChevronRight,
+  Plus,
+  Minus,
+  RefreshCw,
 } from "lucide-solid";
 import { repoStore } from "../../../store/repoStore";
 import { RepoStatus } from "../../../types/git";
@@ -59,36 +60,49 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
   });
 
   return (
-    <div class="bg-carbon-elevated border-b border-carbon-border select-none">
-      {/* Top Bar: Title & Action Controls */}
+    <div class="bg-carbon-elevated border-b border-carbon-border select-none flex-shrink-0">
+      {/* Top Bar: Title & Clean Compact Controls */}
       <div
         onClick={props.onToggleAccordion}
-        class="px-3.5 py-2.5 flex items-center justify-between border-b border-carbon-border/50 cursor-pointer hover:bg-carbon-surface/80 transition-colors"
+        class="px-3.5 py-2 flex items-center justify-between border-b border-carbon-border/50 cursor-pointer hover:bg-carbon-surface/80 transition-colors"
       >
-        <div class="flex items-center gap-2 min-w-0">
+        {/* Left: Source Control Title + Changes Counter */}
+        <div class="flex items-center gap-2 min-w-0 flex-1">
           <Show
             when={isExpanded()}
-            fallback={<ChevronRight class="w-3.5 h-3.5 text-gray-400" />}
+            fallback={<ChevronRight class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />}
           >
-            <ChevronDown class="w-3.5 h-3.5 text-indigo-400" />
+            <ChevronDown class="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
           </Show>
           <FolderGit2 class="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
-          <span class="font-bold text-gray-200 tracking-wider text-xs uppercase truncate">
+          <span class="font-bold text-gray-200 tracking-wider text-xs uppercase whitespace-nowrap">
             Source Control
           </span>
 
           <Show when={props.totalWorkingChanges > 0}>
-            <span class="px-1.5 py-0.2 bg-amber-500/15 border border-amber-500/30 text-amber-400 font-mono text-[10px] font-bold rounded-full">
+            <span class="px-1.5 py-0.2 bg-amber-500/15 border border-amber-500/30 text-amber-400 font-mono text-[10px] font-bold rounded-full flex-shrink-0">
               {props.totalWorkingChanges}
             </span>
           </Show>
         </div>
 
+        {/* Right: Uncluttered Essential Icon Actions */}
         <Show when={isExpanded() && props.repo}>
           <div
-            class="flex items-center gap-1.5"
+            class="flex items-center gap-1 flex-shrink-0 ml-2"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* View All Changes Diff Icon */}
+            <Show when={props.totalWorkingChanges > 0 && props.activeTab === "workingTree"}>
+              <button
+                onClick={() => repoStore.selectFileForDiff("__ALL__", false)}
+                class="p-1 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-200 rounded-md transition-colors cursor-pointer"
+                title="View All Working Tree Changes Diff"
+              >
+                <FileDiff class="w-3.5 h-3.5" />
+              </button>
+            </Show>
+
             {/* Toggle Tree / List View */}
             <button
               onClick={() =>
@@ -96,11 +110,7 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
                   props.viewMode === "tree" ? "list" : "tree",
                 )
               }
-              class={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                props.viewMode === "tree"
-                  ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40"
-                  : "text-gray-400 hover:text-gray-200 hover:bg-carbon-hover"
-              }`}
+              class="p-1 hover:bg-carbon-hover rounded-md text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
               title={
                 props.viewMode === "tree"
                   ? "Switch to List View"
@@ -119,7 +129,7 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
             <Show when={props.viewMode === "tree"}>
               <button
                 onClick={props.onToggleExpandAll}
-                class="p-1.5 hover:bg-carbon-hover rounded-lg text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
+                class="p-1 hover:bg-carbon-hover rounded-md text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
                 title={
                   props.isAllCollapsed
                     ? "Expand All Folders"
@@ -137,49 +147,18 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
               </button>
             </Show>
 
-            {/* View All Changes in Diff Viewer (Working Tree) */}
-            <Show when={props.totalWorkingChanges > 0 && props.activeTab === "workingTree"}>
-              <button
-                onClick={() => repoStore.selectFileForDiff("__ALL__", false)}
-                class="p-1.5 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 hover:text-white rounded-lg transition-colors cursor-pointer flex items-center gap-1"
-                title="View All Working Tree Changes in Diff Viewer"
-              >
-                <FileDiff class="w-3.5 h-3.5 text-indigo-400" />
-                <span class="text-[10px] font-bold hidden sm:inline">All Diff</span>
-              </button>
-            </Show>
-
-            {/* Stage / Unstage All (Only in working tree mode) */}
-            <Show when={props.activeTab === "workingTree"}>
-              <button
-                onClick={props.onStageAll}
-                class="p-1.5 hover:bg-carbon-hover rounded-lg text-gray-400 hover:text-emerald-400 transition-colors cursor-pointer"
-                title="Stage All Changes"
-              >
-                <Plus class="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                onClick={props.onUnstageAll}
-                class="p-1.5 hover:bg-carbon-hover rounded-lg text-gray-400 hover:text-amber-400 transition-colors cursor-pointer"
-                title="Unstage All Changes"
-              >
-                <Minus class="w-3.5 h-3.5" />
-              </button>
-            </Show>
-
             {/* More Options Dropdown */}
             <div ref={optionsMenuRef} class="relative">
               <button
                 onClick={() => setShowOptionsMenu(!showOptionsMenu())}
-                class="p-1.5 hover:bg-carbon-hover rounded-lg text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
-                title="View & Sort Options"
+                class="p-1 hover:bg-carbon-hover rounded-md text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
+                title="More Options"
               >
                 <MoreHorizontal class="w-3.5 h-3.5" />
               </button>
 
               <Show when={showOptionsMenu()}>
-                <div class="absolute right-0 top-8 w-48 bg-carbon-surface border border-carbon-border rounded-xl shadow-2xl py-1 z-40 text-xs backdrop-blur-md">
+                <div class="absolute right-0 top-7 w-48 bg-carbon-surface border border-carbon-border rounded-xl shadow-2xl py-1 z-40 text-xs backdrop-blur-md">
                   <Show when={props.totalWorkingChanges > 0}>
                     <button
                       onClick={() => {
@@ -193,6 +172,33 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
                     </button>
                     <div class="my-1 border-t border-carbon-border" />
                   </Show>
+
+                  <Show when={props.activeTab === "workingTree"}>
+                    <button
+                      onClick={() => {
+                        props.onStageAll();
+                        setShowOptionsMenu(false);
+                      }}
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center gap-2 text-gray-200 hover:text-emerald-400 cursor-pointer"
+                    >
+                      <Plus class="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Stage All Changes</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        props.onUnstageAll();
+                        setShowOptionsMenu(false);
+                      }}
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center gap-2 text-gray-200 hover:text-amber-400 cursor-pointer"
+                    >
+                      <Minus class="w-3.5 h-3.5 text-amber-400" />
+                      <span>Unstage All Changes</span>
+                    </button>
+
+                    <div class="my-1 border-t border-carbon-border" />
+                  </Show>
+
                   <button
                     onClick={() => {
                       props.onViewModeChange("list");
@@ -202,7 +208,7 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
                   >
                     <span>View as List</span>
                     <Show when={props.viewMode === "list"}>
-                      <span class="text-indigo-400">✓</span>
+                      <span class="text-indigo-400 font-bold">✓</span>
                     </Show>
                   </button>
 
@@ -215,7 +221,7 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
                   >
                     <span>View as Tree</span>
                     <Show when={props.viewMode === "tree"}>
-                      <span class="text-indigo-400">✓</span>
+                      <span class="text-indigo-400 font-bold">✓</span>
                     </Show>
                   </button>
 
@@ -230,7 +236,7 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
                   >
                     <span>Sort by Path</span>
                     <Show when={props.sortBy === "path"}>
-                      <span class="text-indigo-400">✓</span>
+                      <span class="text-indigo-400 font-bold">✓</span>
                     </Show>
                   </button>
 
@@ -243,7 +249,7 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
                   >
                     <span>Sort by Name</span>
                     <Show when={props.sortBy === "name"}>
-                      <span class="text-indigo-400">✓</span>
+                      <span class="text-indigo-400 font-bold">✓</span>
                     </Show>
                   </button>
 
@@ -256,7 +262,7 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
                   >
                     <span>Sort by Status</span>
                     <Show when={props.sortBy === "status"}>
-                      <span class="text-indigo-400">✓</span>
+                      <span class="text-indigo-400 font-bold">✓</span>
                     </Show>
                   </button>
 
@@ -268,9 +274,10 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
                         void repoStore.refreshRepo(props.repo.path);
                       setShowOptionsMenu(false);
                     }}
-                    class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover text-gray-200 cursor-pointer"
+                    class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center gap-2 text-gray-200 cursor-pointer"
                   >
-                    Refresh Changes
+                    <RefreshCw class="w-3.5 h-3.5 text-gray-400" />
+                    <span>Refresh Changes</span>
                   </button>
                 </div>
               </Show>
@@ -283,9 +290,9 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
       <Show when={isExpanded()}>
         <Show when={props.repo}>
           {(repo) => (
-            <div class="px-3.5 py-2 flex items-center justify-between gap-2 bg-carbon-base/40">
-              <div class="flex items-center gap-2 min-w-0">
-                <span class="font-bold text-gray-100 text-xs truncate">
+            <div class="px-3.5 py-1.5 flex items-center justify-between gap-2 bg-[#0E1119] border-b border-carbon-border/40">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="font-bold text-gray-200 text-xs truncate">
                   {repo().name}
                 </span>
                 <Show when={repo().isDirty}>
@@ -297,8 +304,8 @@ export const ChangesHeader: Component<ChangesHeaderProps> = (props) => {
               </div>
 
               <div class="flex items-center gap-1.5 flex-shrink-0">
-                {/* Branch Pill styled like Repository List */}
-                <div class="flex items-center gap-1 px-2 py-0.5 bg-indigo-500/15 border border-indigo-500/40 rounded-full text-indigo-300 font-mono text-[10.5px] font-bold">
+                {/* Branch Pill */}
+                <div class="flex items-center gap-1 px-2 py-0.5 bg-indigo-500/15 border border-indigo-500/30 rounded-full text-indigo-300 font-mono text-[10.5px] font-bold">
                   <GitBranch class="w-3 h-3 text-indigo-400" />
                   <span class="truncate max-w-[120px]">
                     {repo().currentBranch}
