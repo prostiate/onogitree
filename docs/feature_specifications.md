@@ -1,6 +1,6 @@
 # Feature Specifications & UI Blueprint
 
-This document details the functional specifications, user interface structure, and operational controls for **OnoGitTree**, including multi-repository management, batch operations, Git Diffing, Git Graph visualization, and 3-Way Merge Conflict resolution.
+This document details the functional specifications, user interface structure, and operational controls for **OnoGitTree**, powered by **SolidJS**, **Kobalte**, **Monaco Editor**, and **Go (Wails)**.
 
 ---
 
@@ -20,15 +20,17 @@ This document details the functional specifications, user interface structure, a
    - Runs `git fetch --all --prune` across all open repos.
    - Refreshes remote tracking references and ahead/behind counts without touching working directories.
 3. **Push All (`↑`)**:
-   - Identifies all repositories with unpushed commits (`+ahead > 0`) and offers a batch push with confirmation review.
+   - Identifies all repositories with unpushed commits (`+ahead > 0`) and presents a review dialog before pushing.
 4. **Refresh All (`⚡`)**:
    - Re-scans `git status --porcelain=v2`, branch state, and modified file counts.
-5. **Multi-Repo Search & Filter (`🔍`)**:
-   - Filter repos by name, active branch name, dirty state (`is:dirty`), or unpushed commits (`is:ahead`).
+5. **Multi-Repo Search & Filter (`🔍`)** (via `cmdk-solid`):
+   - Fast `Ctrl+K` command palette to fuzzy search repos, active branches, or filter by dirty status (`is:dirty`).
 
 ---
 
 ## 2. Multi-Repository Tree Hierarchy (GitLens Inspired)
+
+Rendered with `@tanstack/solid-virtual` for buttery-smooth 60 FPS scrolling even with 50+ repositories:
 
 ```
 ▼ 🗃️ fe-amazone-monorepo   🌿 feat/cashier-card-impl   [+1 ~2]   • Last fetched 2m ago       [⬆] [⬇] [🔄] [⭐] [⋮]
@@ -56,11 +58,27 @@ This document details the functional specifications, user interface structure, a
    └─ ▶ 👥 Contributors
 ```
 
+### Context Menus (Powered by `@kobalte/core`):
+- **Right-Click on Repository**:
+  - *Open in Terminal* (`gnome-terminal`, `kitty`, etc. or embedded xterm drawer)
+  - *Open in VS Code / Cursor / Neovim*
+  - *Switch Branch...*
+  - *Create Branch from HEAD...*
+  - *Stash All Changes...*
+  - *Discard All Changes...*
+- **Right-Click on Branch**:
+  - *Checkout Branch*
+  - *Pull from `<branch>` into current*
+  - *Merge `<branch>` into current*
+  - *Rebase current on `<branch>`*
+  - *Create Branch from `<branch>`...*
+  - *Delete Branch*
+
 ---
 
 ## 3. Git Diff Visualizer (Side-by-Side & Unified)
 
-When clicking on any modified file in the working tree, or comparing commits/branches:
+Powered by **Monaco Diff Editor** (`@monaco-editor/loader`):
 
 ```
 +----------------------------------------------------------------------------------------------------+
@@ -78,15 +96,15 @@ When clicking on any modified file in the working tree, or comparing commits/bra
 
 ### Key Diff Features:
 - **Side-by-Side (Split) & Unified modes** with instant toggle.
-- **Syntax Highlighting** for TypeScript, JavaScript, Go, Python, HTML/CSS, JSON, YAML, Rust, etc.
-- **Interactive Hunk / Chunk Staging**: Stage individual hunks or entire files directly from the diff view.
-- **Branch / Commit Comparison**: Diff any two branches (`main...feat/branch`) or arbitrary commit hashes.
+- **Syntax Highlighting** for 100+ languages.
+- **Hunk Staging**: Stage individual hunks or entire files directly from diff view.
+- **Arbitrary Ref Diffing**: Compare any two branches or commit hashes.
 
 ---
 
 ## 4. Interactive Git Graph Visualizer (Commit DAG)
 
-Visualizes the history and branching topology of the selected repository (or combined workspace graph):
+Powered by **HTML5 Canvas / `@gitgraph/js` + `d3-dag`**:
 
 ```
 +----------------------------------------------------------------------------------------------------+
@@ -103,27 +121,26 @@ Visualizes the history and branching topology of the selected repository (or com
 ```
 
 ### Key Graph Features:
-- **Color-Coded Branch Lanes**: Distinct SVG/Canvas rails for branches, forks, and merges.
-- **Ref Badges**: Visual tags for `HEAD`, `local branches`, `remote branches`, and `tags`.
-- **Click to Inspect**: Selecting a commit displays full author info, commit message, parent commits, and file changes list with diffs.
-- **Direct Context Actions on Graph**:
-  - Right-click node to: *Checkout Commit*, *Create Branch Here*, *Cherry-Pick*, *Rebase on this commit*, *Reset HEAD here*.
+- **Color-Coded Branch Rails**: Clear visual graph of forks, branches, and merges at 60 FPS.
+- **Ref Badges**: Visual indicators for `HEAD`, local branches, remote tracking branches, and tags.
+- **Click to Inspect**: Detailed commit inspection (author, message, parent hashes, modified files list).
+- **Interactive Node Actions**: Right-click to *Checkout*, *Create Branch*, *Cherry-Pick*, or *Rebase*.
 
 ---
 
 ## 5. Visual 3-Way Merge Conflict Resolver
 
-When a merge or pull encounters conflicts, OnoGitTree automatically presents the **Conflict Resolution View**:
+Presented automatically when a merge or batch pull generates conflicts:
 
 ```
 +----------------------------------------------------------------------------------------------------+
-|  ⚠️ 1 Conflicted File: src/config/api.ts   [Accept Ours] [Accept Theirs] [Accept Both] [Abort Merge]|
+|  ⚠️ Conflicted File: src/config/api.ts   [Accept Ours] [Accept Theirs] [Accept Both] [Abort Merge] |
 +----------------------------------------------------------------------------------------------------+
 |  OURS (Current Branch)            |  BASE (Common Ancestor)        |  THEIRS (Incoming Branch)     |
 |  export const API_URL =           |  export const API_URL =        |  export const API_URL =       |
 |    "https://api.v2.internal";     |    "https://api.v1.internal";  |    "https://api.gateway.io";  |
 +----------------------------------------------------------------------------------------------------+
-|  RESOLVED OUTPUT (Editable):                                                                       |
+|  RESOLVED OUTPUT (Editable Buffer):                                                                |
 |  export const API_URL = "https://api.gateway.io";                                                  |
 +----------------------------------------------------------------------------------------------------+
 |  [ ✓ Mark as Resolved & Stage (`git add`) ]                                                        |
@@ -131,10 +148,18 @@ When a merge or pull encounters conflicts, OnoGitTree automatically presents the
 ```
 
 ### Key Conflict Features:
-- **3-Way Visual Comparison**: Displays *Ours (Local)*, *Base (Common ancestor)*, and *Theirs (Incoming)* side-by-side.
-- **One-Click Resolvers**:
+- **3-Way Visual Comparison**: Displays *Ours*, *Base*, and *Theirs* side-by-side.
+- **1-Click Resolvers**:
   - *Accept Current (Ours)* (`git checkout --ours`)
   - *Accept Incoming (Theirs)* (`git checkout --theirs`)
   - *Accept Both (Append)*
-- **Live Output Editor**: Edit the final resolution buffer directly with syntax check before marking as resolved.
-- **Atomic Abort**: Clean `git merge --abort` or `git rebase --abort` with one click.
+- **Live Output Editor**: Real-time editable output buffer with syntax validation.
+- **Atomic Abort**: 1-click clean `git merge --abort` or `git rebase --abort`.
+
+---
+
+## 6. Live Terminal Drawer (`@xterm/xterm`)
+
+- Expandable bottom drawer powered by `xterm.js` and Go `creack/pty`.
+- Streams ANSI-colored output for batch operations or allows direct command execution.
+- Can be toggled with `Ctrl+\`` or shortcut button.
