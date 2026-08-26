@@ -3,6 +3,7 @@
 
 GOPATH ?= $(shell go env GOPATH)
 WAILS ?= $(shell which wails 2>/dev/null || echo $(GOPATH)/bin/wails)
+WAILS_TAGS ?= webkit2_41
 PATH := $(PATH):$(GOPATH)/bin
 
 .PHONY: all dev build test test-backend test-frontend check lint clean help setup-ubuntu
@@ -24,12 +25,12 @@ setup-ubuntu:
 
 dev:
 	@echo "🚀 Starting OnoGitTree in development mode..."
-	PATH="$(PATH)" $(WAILS) dev
+	PATH="$(PATH)" $(WAILS) dev -tags "$(WAILS_TAGS)"
 
 build:
 	@echo "📦 Building production frontend and desktop binary..."
 	cd frontend && pnpm build
-	PATH="$(PATH)" $(WAILS) build
+	PATH="$(PATH)" $(WAILS) build -tags "$(WAILS_TAGS)"
 
 test: test-backend test-frontend
 	@echo "✅ All tests passed successfully!"
