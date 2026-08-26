@@ -78,3 +78,7 @@ All deep architectural and design documents are maintained in the [`docs/`](./do
 
 6. [**`docs/design_system_and_ui_spec.md`**](./docs/design_system_and_ui_spec.md)
    - Distinctive dark carbon design system, palette tokens, typography, and UI layout hierarchy adhering to the `frontend-design` craftsmanship guidelines.
+
+7. [**`docs/coding_standards_and_guidelines.md`**](./docs/coding_standards_and_guidelines.md)
+   - SOLID + KISS architecture principles, `pnpm` package management, zero-`any` TypeScript rules, Prettier exclusions for `.md` files, and testing verification standards.
+
