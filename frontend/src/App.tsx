@@ -13,6 +13,7 @@ import { BranchPicker } from "./components/modals/BranchPicker";
 import { PullAllModal } from "./components/modals/PullAllModal";
 import { PushReviewModal } from "./components/modals/PushReviewModal";
 import { SettingsModal } from "./components/modals/SettingsModal";
+import { DiagnosticsModal } from "./components/modals/DiagnosticsModal";
 import { repoStore } from "./store/repoStore";
 import { RepoStatus } from "./types/git";
 
@@ -26,6 +27,8 @@ export const App: Component = () => {
   );
   const [isOpenRepoOpen, setIsOpenRepoOpen] = createSignal<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = createSignal<boolean>(false);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] =
+    createSignal<boolean>(false);
   const [branchPickerRepo, setBranchPickerRepo] =
     createSignal<RepoStatus | null>(null);
 
@@ -280,7 +283,10 @@ export const App: Component = () => {
       </div>
 
       {/* Persistent Resource Status Bar */}
-      <StatusBar />
+      <StatusBar
+        onBranchClick={(repo) => setBranchPickerRepo(repo)}
+        onDiagnosticsClick={() => setIsDiagnosticsOpen(true)}
+      />
 
       {/* Modals */}
       <OpenRepoModal
@@ -297,6 +303,11 @@ export const App: Component = () => {
       <SettingsModal
         isOpen={isSettingsOpen()}
         onClose={() => setIsSettingsOpen(false)}
+      />
+
+      <DiagnosticsModal
+        isOpen={isDiagnosticsOpen()}
+        onClose={() => setIsDiagnosticsOpen(false)}
       />
 
       <PullAllModal />

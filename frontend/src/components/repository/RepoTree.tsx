@@ -1,6 +1,7 @@
-import { Component, For, Show } from "solid-js";
+import { Component, createSignal, For, Show } from "solid-js";
 import {
   FolderGit2,
+  FolderPlus,
   Plus,
   RefreshCw,
   ChevronDown,
@@ -9,6 +10,7 @@ import {
 import { RepoStatus } from "../../types/git";
 import { repoStore } from "../../store/repoStore";
 import { RepoRow } from "./RepoRow";
+import { ContextMenu, MenuItem } from "../common/ContextMenu";
 
 interface RepoTreeProps {
   onOpenRepoModal: () => void;
@@ -18,11 +20,36 @@ interface RepoTreeProps {
 }
 
 export const RepoTree: Component<RepoTreeProps> = (props) => {
+  const [emptyContextMenuPos, setEmptyContextMenuPos] = createSignal<{
+    x: number;
+    y: number;
+  } | null>(null);
+
   const repos = () => repoStore.filteredRepositories();
   const isExpanded = () => props.isExpanded ?? true;
 
+  const handleEmptyContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    setEmptyContextMenuPos({ x: e.clientX, y: e.clientY });
+  };
+
+  const emptyMenuItems = (): MenuItem[] => [
+    {
+      id: "open-repo",
+      label: "Open or Scan Repositories...",
+      icon: <FolderPlus class="w-3.5 h-3.5 text-git-indigo" />,
+      onClick: () => props.onOpenRepoModal(),
+    },
+    {
+      id: "refresh-all",
+      label: "Refresh All Repositories",
+      icon: <RefreshCw class="w-3.5 h-3.5 text-cyan-400" />,
+      onClick: () => repoStore.refreshAll(),
+    },
+  ];
+
   return (
-    <div class="flex flex-col h-full bg-carbon-base select-none overflow-hidden">
+    <div class="flex flex-col h-full bg-carbon-base select-none overflow-hidden relative">
       {/* Accordion Header */}
       <div
         onClick={props.onToggleExpand}
@@ -41,7 +68,10 @@ export const RepoTree: Component<RepoTreeProps> = (props) => {
           </span>
         </div>
 
-        <div class="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <div
+          class="flex items-center gap-1"
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             onClick={() => repoStore.refreshAll()}
             class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
@@ -64,7 +94,10 @@ export const RepoTree: Component<RepoTreeProps> = (props) => {
 
       {/* Repositories List Container */}
       <Show when={isExpanded()}>
-        <div class="flex-1 overflow-y-auto overflow-x-hidden">
+        <div
+          onContextMenu={handleEmptyContextMenu}
+          class="flex-1 overflow-y-auto overflow-x-hidden min-h-[60px]"
+        >
           <Show
             when={repos().length > 0}
             fallback={
@@ -92,6 +125,19 @@ export const RepoTree: Component<RepoTreeProps> = (props) => {
             </For>
           </Show>
         </div>
+      </Show>
+
+      {/* Empty Area Right Click Context Menu */}
+      <Show when={emptyContextMenuPos()}>
+        {(pos) => (
+          <ContextMenu
+            x={pos().x}
+            y={pos().y}
+            isOpen={true}
+            items={emptyMenuItems()}
+            onClose={() => setEmptyContextMenuPos(null)}
+          />
+        )}
       </Show>
     </div>
   );
