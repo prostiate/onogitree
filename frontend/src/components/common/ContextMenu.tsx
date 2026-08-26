@@ -81,13 +81,13 @@ export const ContextMenu: Component<ContextMenuProps> = (props) => {
           top: `${getPosition().y}px`,
           left: `${getPosition().x}px`,
         }}
-        class="fixed z-50 min-w-[210px] bg-[#141721] border border-gray-700/80 rounded-xl shadow-2xl py-1.5 text-xs text-gray-200 select-none backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+        class="fixed z-50 min-w-[210px] bg-carbon-surface border border-carbon-border rounded-xl shadow-2xl py-1.5 text-xs text-gray-200 select-none backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
       >
         <For each={props.items}>
           {(item) => (
             <Show
               when={!item.divider}
-              fallback={<div class="my-1 border-t border-gray-800" />}
+              fallback={<div class="my-1 border-t border-carbon-border" />}
             >
               <div
                 class="relative group"
@@ -109,7 +109,7 @@ export const ContextMenu: Component<ContextMenuProps> = (props) => {
                       ? "opacity-40 cursor-not-allowed text-gray-500"
                       : item.danger
                         ? "hover:bg-rose-500/20 text-rose-400 hover:text-rose-300"
-                        : "hover:bg-[#1E2333] hover:text-white text-gray-300"
+                        : "hover:bg-carbon-hover hover:text-white text-gray-300"
                   }`}
                 >
                   <div class="flex items-center gap-2 truncate">
@@ -135,13 +135,13 @@ export const ContextMenu: Component<ContextMenuProps> = (props) => {
 
                 {/* Submenu flyout */}
                 <Show when={item.subItems && activeSubmenu() === item.id}>
-                  <div class="absolute left-full top-0 ml-1 min-w-[190px] bg-[#141721] border border-gray-700/80 rounded-xl shadow-2xl py-1.5 text-xs text-gray-200 z-50">
+                  <div class="absolute left-full top-0 ml-1 min-w-[190px] bg-carbon-surface border border-carbon-border rounded-xl shadow-2xl py-1.5 text-xs text-gray-200 z-50">
                     <For each={item.subItems}>
                       {(sub) => (
                         <Show
                           when={!sub.divider}
                           fallback={
-                            <div class="my-1 border-t border-gray-800" />
+                            <div class="my-1 border-t border-carbon-border" />
                           }
                         >
                           <button
@@ -154,7 +154,7 @@ export const ContextMenu: Component<ContextMenuProps> = (props) => {
                                 props.onClose();
                               }
                             }}
-                            class="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-[#1E2333] hover:text-white text-gray-300 transition-colors cursor-pointer"
+                            class="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-carbon-hover hover:text-white text-gray-300 transition-colors cursor-pointer"
                           >
                             <span class="truncate font-medium">
                               {sub.label}

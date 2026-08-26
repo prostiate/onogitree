@@ -391,13 +391,13 @@ export const ChangesView: Component = () => {
                 </button>
 
                 <Show when={showOptionsMenu()}>
-                  <div class="absolute right-0 top-7 w-48 bg-[#141721] border border-gray-700/80 rounded-xl shadow-2xl py-1 z-40 text-xs backdrop-blur-md">
+                  <div class="absolute right-0 top-7 w-48 bg-carbon-surface border border-carbon-border rounded-xl shadow-2xl py-1 z-40 text-xs backdrop-blur-md">
                     <button
                       onClick={() => {
                         setViewMode("list");
                         setShowOptionsMenu(false);
                       }}
-                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center justify-between text-gray-200 cursor-pointer"
                     >
                       <span>View as List</span>
                       <Show when={viewMode() === "list"}>
@@ -410,7 +410,7 @@ export const ChangesView: Component = () => {
                         setViewMode("tree");
                         setShowOptionsMenu(false);
                       }}
-                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center justify-between text-gray-200 cursor-pointer"
                     >
                       <span>View as Tree</span>
                       <Show when={viewMode() === "tree"}>
@@ -418,14 +418,14 @@ export const ChangesView: Component = () => {
                       </Show>
                     </button>
 
-                    <div class="my-1 border-t border-gray-800" />
+                    <div class="my-1 border-t border-carbon-border" />
 
                     <button
                       onClick={() => {
                         setSortBy("path");
                         setShowOptionsMenu(false);
                       }}
-                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center justify-between text-gray-200 cursor-pointer"
                     >
                       <span>Sort by Path</span>
                       <Show when={sortBy() === "path"}>
@@ -438,7 +438,7 @@ export const ChangesView: Component = () => {
                         setSortBy("name");
                         setShowOptionsMenu(false);
                       }}
-                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center justify-between text-gray-200 cursor-pointer"
                     >
                       <span>Sort by Name</span>
                       <Show when={sortBy() === "name"}>
@@ -451,7 +451,7 @@ export const ChangesView: Component = () => {
                         setSortBy("status");
                         setShowOptionsMenu(false);
                       }}
-                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] flex items-center justify-between text-gray-200 cursor-pointer"
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center justify-between text-gray-200 cursor-pointer"
                     >
                       <span>Sort by Status</span>
                       <Show when={sortBy() === "status"}>
@@ -459,14 +459,14 @@ export const ChangesView: Component = () => {
                       </Show>
                     </button>
 
-                    <div class="my-1 border-t border-gray-800" />
+                    <div class="my-1 border-t border-carbon-border" />
 
                     <button
                       onClick={() => {
                         void repoStore.refreshRepo(repo().path);
                         setShowOptionsMenu(false);
                       }}
-                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2333] text-gray-200 cursor-pointer"
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover text-gray-200 cursor-pointer"
                     >
                       Refresh Changes
                     </button>

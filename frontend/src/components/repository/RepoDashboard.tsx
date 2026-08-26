@@ -28,7 +28,6 @@ import {
 } from "lucide-solid";
 import { repoStore } from "../../store/repoStore";
 import { settingsStore } from "../../store/settingsStore";
-import { batchStore } from "../../store/batchStore";
 import {
   RepoStatus,
   FileStatus,
@@ -501,11 +500,28 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
 
           <Show when={props.repo.aheadCount > 0}>
             <button
-              onClick={() => batchStore.setIsPushModalOpen(true)}
-              class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              onClick={async () => {
+                try {
+                  await repoStore.pushRepo(props.repo.path);
+                } catch (err) {
+                  console.error("Push error:", err);
+                }
+              }}
+              disabled={repoStore.isLoading()}
+              class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+              title={`Push ${props.repo.aheadCount} outgoing commits to upstream`}
             >
-              <ArrowUpFromLine class="w-3.5 h-3.5" />
-              <span>Push {props.repo.aheadCount} Commits</span>
+              <Show
+                when={repoStore.isLoading()}
+                fallback={<ArrowUpFromLine class="w-3.5 h-3.5" />}
+              >
+                <RefreshCw class="w-3.5 h-3.5 animate-spin" />
+              </Show>
+              <span>
+                {repoStore.isLoading()
+                  ? "Pushing..."
+                  : `Push ${props.repo.aheadCount} Commits`}
+              </span>
             </button>
           </Show>
 

@@ -453,13 +453,13 @@ export const DiffViewer: Component = () => {
                 </button>
 
                 <Show when={showMoreMenu()}>
-                  <div class="absolute right-0 top-8 w-52 bg-[#141824] border border-gray-700/80 rounded-xl shadow-2xl py-1 z-40 text-xs backdrop-blur-md">
+                  <div class="absolute right-0 top-8 w-52 bg-carbon-surface border border-carbon-border rounded-xl shadow-2xl py-1 z-40 text-xs backdrop-blur-md">
                     <button
                       onClick={() => {
                         toggleViewLayout();
                         setShowMoreMenu(false);
                       }}
-                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2436] flex items-center justify-between text-gray-200 cursor-pointer"
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center justify-between text-gray-200 cursor-pointer"
                     >
                       <span>
                         {viewLayout() === "inline"
@@ -473,7 +473,7 @@ export const DiffViewer: Component = () => {
                         toggleCollapseUnchanged();
                         setShowMoreMenu(false);
                       }}
-                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2436] flex items-center justify-between text-gray-200 cursor-pointer"
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center justify-between text-gray-200 cursor-pointer"
                     >
                       <span>Collapse Unchanged</span>
                       <Show when={collapseUnchanged()}>
@@ -481,14 +481,14 @@ export const DiffViewer: Component = () => {
                       </Show>
                     </button>
 
-                    <div class="my-1 border-t border-gray-800" />
+                    <div class="my-1 border-t border-carbon-border" />
 
                     <button
                       onClick={() => {
                         expandAllFiles();
                         setShowMoreMenu(false);
                       }}
-                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2436] flex items-center gap-2 text-gray-200 cursor-pointer"
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center gap-2 text-gray-200 cursor-pointer"
                     >
                       <UnfoldVertical class="w-3.5 h-3.5 text-indigo-400" />
                       <span>Expand All Files</span>
@@ -499,20 +499,20 @@ export const DiffViewer: Component = () => {
                         collapseAllFiles();
                         setShowMoreMenu(false);
                       }}
-                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2436] flex items-center gap-2 text-gray-200 cursor-pointer"
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center gap-2 text-gray-200 cursor-pointer"
                     >
                       <FoldVertical class="w-3.5 h-3.5 text-gray-400" />
                       <span>Collapse All Files</span>
                     </button>
 
-                    <div class="my-1 border-t border-gray-800" />
+                    <div class="my-1 border-t border-carbon-border" />
 
                     <button
                       onClick={() => {
                         copyDiff();
                         setShowMoreMenu(false);
                       }}
-                      class="w-full text-left px-3 py-1.5 hover:bg-[#1E2436] flex items-center gap-2 text-gray-200 cursor-pointer"
+                      class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center gap-2 text-gray-200 cursor-pointer"
                     >
                       <Show
                         when={copied()}
@@ -535,7 +535,7 @@ export const DiffViewer: Component = () => {
                             );
                           setShowMoreMenu(false);
                         }}
-                        class="w-full text-left px-3 py-1.5 hover:bg-[#1E2436] flex items-center gap-2 text-gray-200 cursor-pointer"
+                        class="w-full text-left px-3 py-1.5 hover:bg-carbon-hover flex items-center gap-2 text-gray-200 cursor-pointer"
                       >
                         <ExternalLink class="w-3.5 h-3.5 text-gray-400" />
                         <span>Open File in System Editor</span>
@@ -549,7 +549,7 @@ export const DiffViewer: Component = () => {
                         diff().filePath !== "__ALL__"
                       }
                     >
-                      <div class="my-1 border-t border-gray-800" />
+                      <div class="my-1 border-t border-carbon-border" />
 
                       <button
                         onClick={() => {

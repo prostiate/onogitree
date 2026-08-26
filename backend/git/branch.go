@@ -163,8 +163,20 @@ func (s *BranchService) GetRecentCommits(ctx context.Context, repoPath string, l
 
 // Push pushes the current branch to origin.
 func (s *BranchService) Push(ctx context.Context, repoPath string) error {
-	_, err := s.runner.Run(ctx, repoPath, "push")
-	return err
+	out, err := s.runner.Run(ctx, repoPath, "push")
+	if err != nil {
+		// If upstream is not configured, get current branch and try setting upstream
+		if strings.Contains(out, "--set-upstream") || strings.Contains(out, "no upstream branch") {
+			branchOut, bErr := s.runner.Run(ctx, repoPath, "branch", "--show-current")
+			branch := strings.TrimSpace(branchOut)
+			if bErr == nil && branch != "" {
+				_, pushErr := s.runner.Run(ctx, repoPath, "push", "-u", "origin", branch)
+				return pushErr
+			}
+		}
+		return fmt.Errorf("push failed: %s (%w)", strings.TrimSpace(out), err)
+	}
+	return nil
 }
 
 // GetCommitDetails returns comprehensive commit metadata and numstat files.
