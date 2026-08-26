@@ -68,6 +68,11 @@ export const OutgoingGraphNode: Component<OutgoingGraphNodeProps> = (props) => {
   const isFolderExpanded = (folderId: string) =>
     !collapsedFolders().has(folderId);
 
+  const isSelected = (path: string, staged: boolean) => {
+    const diff = repoStore.selectedFileDiff();
+    return !!diff && diff.staged === staged && !diff.commitHash && diff.filePath === path;
+  };
+
   return (
     <div
       class={`group flex items-stretch transition-colors select-none ${
@@ -211,12 +216,20 @@ export const OutgoingGraphNode: Component<OutgoingGraphNodeProps> = (props) => {
                     onClick={() =>
                       repoStore.selectFileForDiff(file.path, file.staged)
                     }
-                    class="group flex items-center justify-between px-3 py-1.5 hover:bg-[#F7F5F0] dark:hover:bg-[#161B26] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs font-mono transition-colors"
+                    class={`group flex items-center justify-between px-3 py-1.5 cursor-pointer text-xs font-mono transition-all ${
+                      isSelected(file.path, file.staged)
+                        ? "bg-indigo-500/20 text-white font-semibold"
+                        : "hover:bg-[#F7F5F0] dark:hover:bg-[#161B26] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                    }`}
                     style={{ "padding-left": `${depth * 14 + 20}px` }}
                   >
                     <div class="flex items-center gap-2 min-w-0">
                       <FileTypeBadge filePath={file.path} />
-                      <span class="truncate text-gray-800 dark:text-gray-200 group-hover:text-sky-600 dark:group-hover:text-sky-300">
+                      <span class={`truncate ${
+                        isSelected(file.path, file.staged)
+                          ? "text-sky-600 dark:text-sky-300 font-bold"
+                          : "text-gray-800 dark:text-gray-200 group-hover:text-sky-600 dark:group-hover:text-sky-300"
+                      }`}>
                         {node.name}
                       </span>
                     </div>

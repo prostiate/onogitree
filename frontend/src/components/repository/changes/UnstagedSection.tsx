@@ -17,6 +17,11 @@ interface UnstagedSectionProps {
 }
 
 export const UnstagedSection: Component<UnstagedSectionProps> = (props) => {
+  const isSelected = (path: string) => {
+    const diff = repoStore.selectedFileDiff();
+    return !!diff && diff.staged === false && !diff.commitHash && diff.filePath === path;
+  };
+
   return (
     <div class="select-none">
       <div class="flex items-center justify-between text-[11px] text-gray-400 font-semibold mb-1">
@@ -57,11 +62,15 @@ export const UnstagedSection: Component<UnstagedSectionProps> = (props) => {
                     onDblClick={() =>
                       repoStore.openPath(`${props.repoPath}/${file.path}`)
                     }
-                    class="group flex items-center justify-between px-2 py-1.5 bg-carbon-base hover:bg-[#1A1F2C] border border-carbon-border/50 rounded font-mono text-[11.5px] cursor-pointer transition-colors"
+                    class={`group flex items-center justify-between px-2 py-1.5 border rounded font-mono text-[11.5px] cursor-pointer transition-all ${
+                      isSelected(file.path)
+                        ? "bg-indigo-500/20 text-white border-indigo-500/60 ring-1 ring-indigo-500/40 shadow-xs font-semibold"
+                        : "bg-carbon-base hover:bg-[#1A1F2C] border-carbon-border/50 text-gray-200"
+                    }`}
                   >
                     <div class="flex items-center gap-2 truncate">
                       <StatusBadge status={file.status} variant="compact" />
-                      <span class="text-gray-200 truncate">
+                      <span class={`truncate ${isSelected(file.path) ? "text-indigo-300 font-bold" : "text-gray-200"}`}>
                         {file.path}
                       </span>
                     </div>
@@ -104,11 +113,17 @@ export const UnstagedSection: Component<UnstagedSectionProps> = (props) => {
                     repoStore.openPath(`${props.repoPath}/${file.path}`)
                   }
                   style={{ "padding-left": `${depth * 12 + 18}px` }}
-                  class="group flex items-center justify-between py-1 pr-2 hover:bg-[#1A1F2C] border-b border-carbon-border/30 rounded font-mono text-[11.5px] cursor-pointer transition-colors"
+                  class={`group flex items-center justify-between py-1 pr-2 border-b rounded font-mono text-[11.5px] cursor-pointer transition-all ${
+                    isSelected(file.path)
+                      ? "bg-indigo-500/20 text-white border-indigo-500/60 ring-1 ring-indigo-500/40 font-semibold"
+                      : "border-carbon-border/30 hover:bg-[#1A1F2C] text-gray-200"
+                  }`}
                 >
                   <div class="flex items-center gap-1.5 truncate">
                     <StatusBadge status={file.status} variant="compact" />
-                    <span class="text-gray-200 truncate">{node.name}</span>
+                    <span class={`truncate ${isSelected(file.path) ? "text-indigo-300 font-bold" : "text-gray-200"}`}>
+                      {node.name}
+                    </span>
                   </div>
 
                   <div class="flex items-center gap-1">

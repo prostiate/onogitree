@@ -70,6 +70,11 @@ export const UncommittedChangesCard: Component<UncommittedChangesCardProps> = (p
   const isFolderExpanded = (folderId: string) =>
     !collapsedFolders().has(folderId);
 
+  const isSelected = (path: string, staged: boolean) => {
+    const diff = repoStore.selectedFileDiff();
+    return !!diff && diff.staged === staged && !diff.commitHash && diff.filePath === path;
+  };
+
   return (
     <div class="bg-[#11141D] border border-gray-800 rounded-2xl p-6 space-y-4 shadow-xl select-none">
       <div class="flex items-center justify-between flex-wrap gap-3">
@@ -183,11 +188,19 @@ export const UncommittedChangesCard: Component<UncommittedChangesCardProps> = (p
                       onClick={() =>
                         repoStore.selectFileForDiff(file.path, file.staged)
                       }
-                      class="group px-4 py-2.5 hover:bg-[#161B26] flex items-center justify-between gap-4 cursor-pointer transition-colors"
+                      class={`group px-4 py-2.5 flex items-center justify-between gap-4 cursor-pointer transition-all ${
+                        isSelected(file.path, file.staged)
+                          ? "bg-indigo-500/20 text-white font-semibold"
+                          : "hover:bg-[#161B26]"
+                      }`}
                     >
                       <div class="flex items-center gap-3 min-w-0">
                         <StatusBadge status={file.status} />
-                        <span class="font-mono text-xs text-gray-200 truncate group-hover:text-indigo-300 transition-colors">
+                        <span class={`font-mono text-xs truncate transition-colors ${
+                          isSelected(file.path, file.staged)
+                            ? "text-indigo-300 font-bold"
+                            : "text-gray-200 group-hover:text-indigo-300"
+                        }`}>
                           {file.path}
                         </span>
                       </div>
@@ -246,12 +259,20 @@ export const UncommittedChangesCard: Component<UncommittedChangesCardProps> = (p
                     onClick={() =>
                       repoStore.selectFileForDiff(file.path, file.staged)
                     }
-                    class="group flex items-center justify-between px-3 py-1.5 hover:bg-[#161B26] text-gray-300 hover:text-white cursor-pointer text-xs font-mono transition-colors"
+                    class={`group flex items-center justify-between px-3 py-1.5 cursor-pointer text-xs font-mono transition-all ${
+                      isSelected(file.path, file.staged)
+                        ? "bg-indigo-500/20 text-white font-semibold"
+                        : "hover:bg-[#161B26] text-gray-300 hover:text-white"
+                    }`}
                     style={{ "padding-left": `${depth * 14 + 26}px` }}
                   >
                     <div class="flex items-center gap-2.5 min-w-0">
                       <StatusBadge status={file.status} />
-                      <span class="truncate text-gray-200 group-hover:text-indigo-300">
+                      <span class={`truncate ${
+                        isSelected(file.path, file.staged)
+                          ? "text-indigo-300 font-bold"
+                          : "text-gray-200 group-hover:text-indigo-300"
+                      }`}>
                         {node.name}
                       </span>
                     </div>
