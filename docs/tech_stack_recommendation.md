@@ -1,121 +1,83 @@
-# Tech Stack Evaluation: Go (Wails) Backend & Reactive Frontend Alternatives
+# Tech Stack Evaluation: Go (Wails) Backend & Reactive Frontend Ecosystem
 
-This document evaluates the architectural choices for **OnoGitTree**, focusing on **Go (Wails)** for the backend and modern **zero-re-render, non-VDOM frontend alternatives** to React (SolidJS, Svelte 5, Vue 3).
-
----
-
-## 1. Why Move Beyond React? (The Re-render & `useEffect` Problem)
-
-In real-time developer desktop tools (where Git status streams, batch progress updates, and file watchers fire dozens of events per second), **React's Virtual DOM architecture presents well-known friction**:
-
-| React Pain Point | Technical Reason | Impact on Desktop Git Clients |
-| :--- | :--- | :--- |
-| **Component Re-render Cascades** | Whenever state changes, the entire component function re-executes top-to-bottom. | Typing in a filter bar or receiving a git status event can trigger re-renders across 20+ repo tree nodes. |
-| **`useEffect` Dependency Hell** | Requires manual dependency arrays `[depA, depB]`. Missing a dependency creates stale closures; adding objects causes infinite loops. | Complex Git background polling and IPC event listeners become fragile and bug-prone. |
-| **`useMemo` / `useCallback` Boilerplate** | Required everywhere to prevent child components from re-rendering on parent state changes. | High mental overhead and cluttered code. |
-| **Virtual DOM Diffing Overhead** | React creates an in-memory JS tree and diffs it against the real DOM on every tick. | Wastes CPU cycles and increases battery/RAM usage on Linux. |
+This document provides a comprehensive evaluation of **SolidJS vs. Svelte 5** for **OnoGitTree**, alongside an exhaustive catalog of specialized libraries for Git diffing, commit graphs, 3-way merge conflict resolution, context menus, resizable panes, terminal output, and Go backend persistence.
 
 ---
 
-## 2. Modern High-Performance Alternatives: SolidJS vs. Svelte 5
+## 1. Frontend Framework Showdown: SolidJS vs. Svelte 5
+
+Both SolidJS and Svelte 5 completely eliminate React's Virtual DOM, component re-render cascades, and `useEffect` dependency array bugs.
 
 ```
 +----------------------------------------------------------------------------------------------------+
-|                                 REACTIVITY COMPARISON MATRIX                                       |
-+----------------------+--------------------+--------------------+-----------------------------------+
-| Feature              | React 19           | SolidJS (Signals)  | Svelte 5 (Runes)                  |
-+----------------------+--------------------+--------------------+-----------------------------------+
-| Component Execution  | Runs on EVERY tick | Runs EXACTLY ONCE  | Runs EXACTLY ONCE                 |
-| Virtual DOM          | YES (Heavy diffs)  | NO (0% VDOM)       | NO (0% VDOM)                      |
-| Dependency Arrays    | Required in hooks  | NONE (Auto-track)  | NONE (Auto-track)                 |
-| Reactivity Engine    | State snapshot     | Fine-grained Signal| Fine-grained Compiler Runes       |
-| Idle Memory / CPU    | Moderate           | Minimal            | Minimal                           |
-| Syntax Style         | JSX + Hooks        | JSX + Signals      | HTML Templates + Runes            |
-| Benchmarks           | ~1.7x Baseline     | ~1.05x (Near C/JS) | ~1.10x (Near C/JS)                |
-+----------------------+--------------------+--------------------+-----------------------------------+
+|                                      FRAMEWORK BENCHMARK & FIT                                     |
++--------------------------+------------------------------------+------------------------------------+
+| Feature                  | SolidJS (Signals + JSX)            | Svelte 5 (Runes + Templates)       |
++--------------------------+------------------------------------+------------------------------------+
+| Reactivity Engine        | Fine-grained runtime Signals       | Fine-grained compiler Runes        |
+| Component Execution      | Runs EXACTLY ONCE (No re-renders)  | Runs EXACTLY ONCE (No re-renders)  |
+| Virtual DOM Overhead     | 0% (None)                          | 0% (None)                          |
+| Syntax Style             | JSX + TypeScript functions         | Single-file HTML-like templates    |
+| Monaco / Canvas Glue     | Natural (Passes DOM refs cleanly)  | Simple (Uses onMount / $effect)    |
+| Context Menu Composability| Extremely flexible (JSX children)  | Clean (Slots / Snippets)           |
+| Memory Footprint         | ~25–35 MB                          | ~25–35 MB                          |
+| Wails Project Template   | Community template / Vite setup    | Official out-of-the-box template   |
++--------------------------+------------------------------------+------------------------------------+
 ```
+
+### Which should you choose?
+- **Choose SolidJS** if: You love **TypeScript / JSX**, want zero learning curve coming from React-style components, and desire absolute granular control over signal updates.
+- **Choose Svelte 5** if: You love **concise single-file templates** (`.svelte`), want zero JSX syntax boilerplate, and want official first-class Wails CLI template integration.
 
 ---
 
-## 3. Code Comparison: Multi-Repo Item with Real-Time Status
+## 2. Complete Specialized Library Stack (Frontend & Backend)
 
-### ❌ React (Frequent re-renders, `useEffect` dependencies, `useCallback`):
-```tsx
-// React: Entire component function runs again whenever `status` or `isExpanded` changes
-function RepoRow({ repo, onPull }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+Below is the complete catalog of specialized packages and tools recommended for **OnoGitTree** to support all advanced Git features:
 
-  // Fragile dependency array
-  useEffect(() => {
-    const unsub = window.runtime.EventsOn(`repo:${repo.id}:status`, (newStatus) => {
-      // triggers full re-render of RepoRow and all its children
-    });
-    return () => unsub();
-  }, [repo.id]);
-
-  const handlePull = useCallback(() => onPull(repo.id), [repo.id, onPull]);
-
-  return (
-    <div>
-      <span>{repo.name}</span>
-      <span>{repo.branch}</span>
-      <button onClick={handlePull}>Pull</button>
-    </div>
-  );
-}
-```
-
-### ⚡ SolidJS (Component runs ONCE. ZERO re-renders. Fine-grained Signals):
-```tsx
-// SolidJS: Function executes ONCE on mount like a constructor.
-// When repo.status() updates, ONLY the single text node inside the span is modified in the DOM!
-function RepoRow(props: { repo: Repo; onPull: (id: string) => void }) {
-  const [isExpanded, setIsExpanded] = createSignal(false);
-
-  // Auto-tracked effect without dependency arrays
-  createEffect(() => {
-    console.log("Active branch is now:", props.repo.branch());
-  });
-
-  return (
-    <div>
-      <span>{props.repo.name}</span>
-      <span>{props.repo.branch()}</span>
-      <button onClick={() => props.onPull(props.repo.id)}>Pull</button>
-    </div>
-  );
-}
-```
-
-### 🪄 Svelte 5 (Compiler Runes, Zero Boilerplate):
-```svelte
-<!-- Svelte 5: Clean, compiled reactive state -->
-<script lang="ts">
-  let { repo, onPull } = $props<{ repo: Repo; onPull: (id: string) => void }>();
-  let isExpanded = $state(false);
-
-  // Derived state automatically tracks dependencies
-  let statusText = $derived(`${repo.ahead} ahead, ${repo.behind} behind`);
-</script>
-
-<div class="repo-row">
-  <span>{repo.name}</span>
-  <span>{statusText}</span>
-  <button onclick={() => onPull(repo.id)}>Pull</button>
-</div>
-```
+### A. Git Diff & 3-Way Merge Conflict Resolution
+1. **`monaco-editor` / `@monaco-editor/loader`** *(Recommended for Pro Diffing)*:
+   - The exact diff engine powering VS Code.
+   - Built-in side-by-side (split) and inline unified diff viewers, syntax highlighting for 100+ languages, minimap, and diff navigation.
+2. **`diff2html` / `diff-match-patch`**:
+   - Lightweight, ultra-fast static HTML diff chunk renderer for previewing modified files directly in the repository tree without launching a full editor.
+3. **`@codemirror/merge`**:
+   - Fast, lightweight modern 2-way diff editor alternative when Monaco's bundle size is too heavy.
 
 ---
 
-## 4. Final Recommendation for OnoGitTree Frontend
+### B. Git Graph / DAG Visualization
+1. **`@gitgraph/js`** or **Custom HTML5 Canvas / WebGL Renderer**:
+   - Renders interactive commit graphs, branch lanes, merge arcs, and tag badges at 60 FPS with pan and zoom capabilities.
+2. **`d3-dag` / `d3-hierarchy`**:
+   - Graph theory layout algorithms for topological commit sorting, branch lane index calculations, and ancestor path tracing.
 
-### 🥇 Choice 1: **SolidJS + TypeScript + Tailwind CSS**
-- **Why**:
-  1. Uses **JSX and TypeScript**, so existing React libraries and knowledge (Tailwind, Lucide icons, Monaco editor, Canvas graphs) work with minimal learning curve.
-  2. **Components run once**. Fine-grained signals guarantee that when a background `git status` or `git fetch` completes for repository #4, **only repository #4's badge updates** in the DOM—zero impact on the other 19 repositories.
-  3. No `useEffect` dependency arrays, no stale closures, no `useCallback`/`useMemo` noise.
+---
 
-### 🥈 Choice 2: **Svelte 5 + TypeScript + Tailwind CSS**
-- **Why**:
-  1. Most concise and readable syntax with `$state`, `$derived`, and `$effect`.
-  2. Tiny compiled bundle, no runtime overhead, native Wails project template available out of the box (`wails init -t svelte-ts`).
+### C. UI Primitives, Context Menus & Command Palette
+| Category | **SolidJS Choice** | **Svelte 5 Choice** |
+| :--- | :--- | :--- |
+| **Accessible Context Menus & Dialogs** | **`@kobalte/core`** / **`corvu`** | **`bits-ui`** / **`shadcn-svelte`** |
+| **`Ctrl+K` Command Palette** | **`cmdk-solid`** | **`cmdk-sv`** |
+| **Tree & List Virtualization** | **`@tanstack/solid-virtual`** | **`@tanstack/svelte-virtual`** |
+| **Resizable Split Panes** | **`solid-resizable-panels`** | **`paneforge`** |
+| **Icons** | **`lucide-solid`** | **`lucide-svelte`** |
+
+---
+
+### D. Interactive Terminal & Git Output Streaming
+1. **`@xterm/xterm` + `@xterm/addon-fit` + `@xterm/addon-webgl`**:
+   - Embeds a high-performance, dark-themed terminal drawer at the bottom of the window.
+   - Streams live colored Git CLI output (`git pull`, `git push`, `git fetch`, interactive rebase prompts) with full ANSI escape color support.
+
+---
+
+### E. Backend Go Packages (`go.mod`)
+1. **`github.com/fsnotify/fsnotify`**:
+   - Cross-platform native Linux `inotify` watcher to monitor `.git/HEAD`, `.git/refs/heads/**`, and `.git/index` with sub-millisecond latency.
+2. **`modernc.org/sqlite`** (Pure Go, Zero CGO):
+   - Embedded SQLite database storing workspace directories, pinned repositories, commit metadata cache, and user preferences locally at `~/.config/onogitree/data.db` without requiring C compiler toolchains.
+3. **`github.com/creack/pty`**:
+   - Unix pseudo-terminal (PTY) in Go for executing interactive Git CLI commands and streaming ANSI outputs directly to xterm.js.
+4. **`github.com/alessio/shellescape`**:
+   - Sanitizes and safely escapes shell arguments when constructing Git commands.
