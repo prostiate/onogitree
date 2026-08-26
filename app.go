@@ -246,6 +246,33 @@ func (a *App) Commit(repoPath string, message string, amend bool) error {
 	return a.branchSvc.Commit(a.ctx, repoPath, message, amend)
 }
 
+// DiscardFiles discards working tree changes for the specified files.
+func (a *App) DiscardFiles(repoPath string, files []string) error {
+	return a.branchSvc.DiscardFiles(a.ctx, repoPath, files...)
+}
+
+// OpenPathInSystem opens a file or folder using the system default application.
+func (a *App) OpenPathInSystem(targetPath string) error {
+	cmd := exec.Command("xdg-open", targetPath)
+	return cmd.Start()
+}
+
+// AddToGitignore appends a pattern or file path to .gitignore of the repository.
+func (a *App) AddToGitignore(repoPath string, pattern string) error {
+	gitignorePath := filepath.Join(repoPath, ".gitignore")
+	f, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if _, err := f.WriteString("\n" + pattern + "\n"); err != nil {
+		return err
+	}
+	return nil
+}
+
+
 // RunBatchPull triggers parallel pull across all open repositories emitting real-time events.
 func (a *App) RunBatchPull(skipDirty bool) error {
 	statuses, err := a.RefreshAllRepositories()

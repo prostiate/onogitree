@@ -97,3 +97,18 @@ func (s *BranchService) Commit(ctx context.Context, repoPath string, message str
 	_, err := s.runner.Run(ctx, repoPath, args...)
 	return err
 }
+
+// DiscardFiles discards uncommitted modifications or deletes untracked files.
+func (s *BranchService) DiscardFiles(ctx context.Context, repoPath string, files ...string) error {
+	if len(files) == 0 {
+		return nil
+	}
+	for _, f := range files {
+		// Restore tracked changes
+		_, _ = s.runner.Run(ctx, repoPath, "restore", "--staged", "--worktree", f)
+		// Clean untracked if still exists
+		_, _ = s.runner.Run(ctx, repoPath, "clean", "-fd", f)
+	}
+	return nil
+}
+

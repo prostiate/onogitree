@@ -177,6 +177,32 @@ function createRepoStore() {
       }
     },
 
+    async discardFiles(repoPath: string, files: string[]) {
+      try {
+        await WailsBridge.discardFiles(repoPath, files);
+        await this.refreshRepo(repoPath);
+      } catch (err) {
+        console.error('Failed to discard files:', err);
+      }
+    },
+
+    async openPath(targetPath: string) {
+      try {
+        await WailsBridge.openPathInSystem(targetPath);
+      } catch (err) {
+        console.error('Failed to open path:', err);
+      }
+    },
+
+    async addToGitignore(repoPath: string, pattern: string) {
+      try {
+        await WailsBridge.addToGitignore(repoPath, pattern);
+        await this.refreshRepo(repoPath);
+      } catch (err) {
+        console.error('Failed to add to gitignore:', err);
+      }
+    },
+
     async commit(repoPath: string, message: string, amend: boolean = false) {
       setIsLoading(true);
       try {
@@ -191,5 +217,6 @@ function createRepoStore() {
     },
   };
 }
+
 
 export const repoStore = createRoot(createRepoStore);

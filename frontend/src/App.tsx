@@ -192,13 +192,17 @@ export const App: Component = () => {
                       <h1 class="text-base font-bold text-white tracking-wide">{repo().name}</h1>
                       <button
                         onClick={() => setBranchPickerRepo(repo())}
-                        class="flex items-center gap-1.5 px-2 py-0.5 bg-carbon-elevated hover:bg-carbon-hover border border-carbon-border rounded text-xs font-mono text-git-indigo font-semibold cursor-pointer"
-                        title="Switch Branch"
+                        class="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/50 rounded-md text-xs font-mono text-indigo-300 font-bold cursor-pointer transition-all shadow-sm hover:scale-[1.02]"
+                        title="Switch / Create Branch"
                       >
-                        <GitBranch class="w-3.5 h-3.5" />
+                        <GitBranch class="w-3.5 h-3.5 text-indigo-400 stroke-[2.5]" />
                         <span>{repo().currentBranch}</span>
+                        <Show when={repo().isDirty}>
+                          <span class="text-amber-400 font-black text-sm" title="Uncommitted changes">*</span>
+                        </Show>
                       </button>
                     </div>
+
                     <p class="text-xs text-gray-400 font-mono">{repo().path}</p>
                   </div>
 

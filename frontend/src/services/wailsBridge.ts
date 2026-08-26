@@ -208,6 +208,33 @@ export const WailsBridge = {
     return '';
   },
 
+  async discardFiles(repoPath: string, files: string[]): Promise<void> {
+    try {
+      await App.DiscardFiles(repoPath, files);
+    } catch (err) {
+      console.error('DiscardFiles error:', err);
+      throw err;
+    }
+  },
+
+  async openPathInSystem(targetPath: string): Promise<void> {
+    try {
+      await App.OpenPathInSystem(targetPath);
+    } catch (err) {
+      console.error('OpenPathInSystem error:', err);
+    }
+  },
+
+  async addToGitignore(repoPath: string, pattern: string): Promise<void> {
+    try {
+      await App.AddToGitignore(repoPath, pattern);
+    } catch (err) {
+      console.error('AddToGitignore error:', err);
+      throw err;
+    }
+  },
+
+
 
 
   onBatchProgress(callback: (event: BatchProgressEvent) => void): () => void {
