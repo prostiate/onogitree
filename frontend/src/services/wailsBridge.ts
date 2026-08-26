@@ -1,6 +1,7 @@
 import * as App from '../../wailsjs/go/main/App';
 import * as Runtime from '../../wailsjs/runtime/runtime';
-import { RepoStatus, BranchInfo, DiscoveredRepo, WorkspaceRecord, ResourceStats, BatchProgressEvent, CommitSummary } from '../types/git';
+import { RepoStatus, BranchInfo, DiscoveredRepo, WorkspaceRecord, ResourceStats, BatchProgressEvent, CommitSummary, CommitDetail } from '../types/git';
+
 
 
 export const WailsBridge = {
@@ -262,6 +263,26 @@ export const WailsBridge = {
       throw err;
     }
   },
+
+  async getCommitDetails(repoPath: string, commitHash: string): Promise<CommitDetail | null> {
+    try {
+      const detail = await App.GetCommitDetails(repoPath, commitHash);
+      return detail as unknown as CommitDetail;
+    } catch (err) {
+      console.error('GetCommitDetails error:', err);
+      return null;
+    }
+  },
+
+  async getCommitFileDiff(repoPath: string, commitHash: string, filePath: string): Promise<string> {
+    try {
+      return await App.GetCommitFileDiff(repoPath, commitHash, filePath);
+    } catch (err) {
+      console.error('GetCommitFileDiff error:', err);
+      return '';
+    }
+  },
+
 
 
 

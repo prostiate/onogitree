@@ -1,10 +1,11 @@
 import { createSignal, createMemo, createRoot } from 'solid-js';
-import { RepoStatus, WorkspaceRecord, CommitSummary } from '../types/git';
+import { RepoStatus, WorkspaceRecord, CommitSummary, CommitDetail } from '../types/git';
 import { WailsBridge } from '../services/wailsBridge';
 
 export interface DiffSelection {
   filePath: string;
   staged: boolean;
+  commitHash?: string; // If diffing a file from a commit
 }
 
 function createRepoStore() {
@@ -15,6 +16,8 @@ function createRepoStore() {
   const [activeWorkspace, setActiveWorkspace] = createSignal<WorkspaceRecord | null>(null);
   const [selectedFileDiff, setSelectedFileDiff] = createSignal<DiffSelection | null>(null);
   const [recentCommits, setRecentCommits] = createSignal<CommitSummary[]>([]);
+  const [selectedCommitDetail, setSelectedCommitDetail] = createSignal<CommitDetail | null>(null);
+  const [isLoadingCommitDetail, setIsLoadingCommitDetail] = createSignal<boolean>(false);
 
   const selectedRepo = createMemo(() => {
     const id = selectedRepoId();
@@ -49,6 +52,8 @@ function createRepoStore() {
     filteredRepositories,
     selectedFileDiff,
     recentCommits,
+    selectedCommitDetail,
+    isLoadingCommitDetail,
 
     setSearchQuery(q: string) {
       setSearchQuery(q);
@@ -57,20 +62,40 @@ function createRepoStore() {
     selectRepo(id: string) {
       setSelectedRepoId(id);
       setSelectedFileDiff(null);
+      setSelectedCommitDetail(null);
       void this.loadRecentCommits(id);
     },
 
-    selectFileForDiff(filePath: string, staged: boolean) {
-      setSelectedFileDiff({ filePath, staged });
+    selectFileForDiff(filePath: string, staged: boolean, commitHash?: string) {
+      setSelectedFileDiff({ filePath, staged, commitHash });
     },
 
     clearFileDiff() {
       setSelectedFileDiff(null);
     },
 
+    async selectCommit(commitHash: string) {
+      const repo = selectedRepo();
+      if (!repo) return;
+      setIsLoadingCommitDetail(true);
+      try {
+        const detail = await WailsBridge.getCommitDetails(repo.path, commitHash);
+        setSelectedCommitDetail(detail);
+      } catch (err) {
+        console.error('Failed to load commit details:', err);
+        setSelectedCommitDetail(null);
+      } finally {
+        setIsLoadingCommitDetail(false);
+      }
+    },
+
+    clearSelectedCommit() {
+      setSelectedCommitDetail(null);
+    },
+
     async loadRecentCommits(repoPath: string) {
       try {
-        const commits = await WailsBridge.getRecentCommits(repoPath, 10);
+        const commits = await WailsBridge.getRecentCommits(repoPath, 15);
         setRecentCommits(commits);
       } catch (err) {
         console.error('Failed to load recent commits:', err);

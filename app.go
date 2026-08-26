@@ -287,6 +287,18 @@ func (a *App) PushRepository(repoPath string) error {
 	return a.branchSvc.Push(a.ctx, repoPath)
 }
 
+// GetCommitDetails returns full commit metadata and changed files for a commit.
+func (a *App) GetCommitDetails(repoPath string, commitHash string) (*git.CommitDetail, error) {
+	return a.branchSvc.GetCommitDetails(a.ctx, repoPath, commitHash)
+}
+
+// GetCommitFileDiff returns unified diff for a file in a commit.
+func (a *App) GetCommitFileDiff(repoPath string, commitHash string, filePath string) (string, error) {
+	return a.branchSvc.GetCommitFileDiff(a.ctx, repoPath, commitHash, filePath)
+}
+
+
+
 
 
 // RunBatchPull triggers parallel pull across all open repositories emitting real-time events.

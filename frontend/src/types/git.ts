@@ -91,3 +91,26 @@ export interface CommitSummary {
   refs?: string;
 }
 
+export interface CommitFileChange {
+  path: string;
+  status: 'modified' | 'added' | 'deleted' | 'renamed';
+  additions: number;
+  deletions: number;
+}
+
+export interface CommitDetail {
+  hash: string;
+  shortHash: string;
+  authorName: string;
+  authorEmail: string;
+  date: string;
+  relativeDate: string;
+  subject: string;
+  body: string;
+  parents: string[];
+  files: CommitFileChange[];
+  totalAdditions: number;
+  totalDeletions: number;
+}
+
+

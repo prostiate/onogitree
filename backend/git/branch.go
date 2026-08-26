@@ -166,4 +166,101 @@ func (s *BranchService) Push(ctx context.Context, repoPath string) error {
 	return err
 }
 
+// GetCommitDetails returns comprehensive commit metadata and numstat files.
+func (s *BranchService) GetCommitDetails(ctx context.Context, repoPath string, commitHash string) (*CommitDetail, error) {
+	format := "HASH:%H%nSHORT:%h%nAUTHOR:%an%nEMAIL:%ae%nDATE:%ad%nRELDATE:%cr%nSUBJ:%s%nBODY:%b%nPARENTS:%p%n---END_META---"
+	out, err := s.runner.Run(ctx, repoPath, "show", "--numstat", fmt.Sprintf("--pretty=format:%s", format), commitHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get commit details: %w", err)
+	}
+
+	detail := &CommitDetail{
+		Hash:      commitHash,
+		ShortHash: commitHash,
+		Parents:   []string{},
+		Files:     []CommitFileChange{},
+	}
+
+	parts := strings.Split(out, "---END_META---")
+	if len(parts) > 0 {
+		metaLines := strings.Split(parts[0], "\n")
+		isBody := false
+		var bodyLines []string
+
+		for _, line := range metaLines {
+			if strings.HasPrefix(line, "HASH:") {
+				detail.Hash = strings.TrimPrefix(line, "HASH:")
+			} else if strings.HasPrefix(line, "SHORT:") {
+				detail.ShortHash = strings.TrimPrefix(line, "SHORT:")
+			} else if strings.HasPrefix(line, "AUTHOR:") {
+				detail.AuthorName = strings.TrimPrefix(line, "AUTHOR:")
+			} else if strings.HasPrefix(line, "EMAIL:") {
+				detail.AuthorEmail = strings.TrimPrefix(line, "EMAIL:")
+			} else if strings.HasPrefix(line, "DATE:") {
+				detail.Date = strings.TrimPrefix(line, "DATE:")
+			} else if strings.HasPrefix(line, "RELDATE:") {
+				detail.RelativeDate = strings.TrimPrefix(line, "RELDATE:")
+			} else if strings.HasPrefix(line, "SUBJ:") {
+				detail.Subject = strings.TrimPrefix(line, "SUBJ:")
+			} else if strings.HasPrefix(line, "PARENTS:") {
+				p := strings.TrimSpace(strings.TrimPrefix(line, "PARENTS:"))
+				if p != "" {
+					detail.Parents = strings.Fields(p)
+				}
+			} else if strings.HasPrefix(line, "BODY:") {
+				isBody = true
+				firstBody := strings.TrimPrefix(line, "BODY:")
+				if strings.TrimSpace(firstBody) != "" {
+					bodyLines = append(bodyLines, firstBody)
+				}
+			} else if isBody {
+				bodyLines = append(bodyLines, line)
+			}
+		}
+		detail.Body = strings.TrimSpace(strings.Join(bodyLines, "\n"))
+	}
+
+	if len(parts) > 1 {
+		numstatLines := strings.Split(parts[1], "\n")
+		for _, line := range numstatLines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			cols := strings.Split(line, "\t")
+			if len(cols) >= 3 {
+				var adds, dels int
+				fmt.Sscanf(cols[0], "%d", &adds)
+				fmt.Sscanf(cols[1], "%d", &dels)
+				filePath := cols[2]
+
+				status := "modified"
+				if dels == 0 && adds > 0 {
+					status = "added"
+				} else if adds == 0 && dels > 0 {
+					status = "deleted"
+				}
+
+				detail.Files = append(detail.Files, CommitFileChange{
+					Path:      filePath,
+					Status:    status,
+					Additions: adds,
+					Deletions: dels,
+				})
+				detail.TotalAdditions += adds
+				detail.TotalDeletions += dels
+			}
+		}
+	}
+
+	return detail, nil
+}
+
+// GetCommitFileDiff returns unified diff for a file in a specific commit.
+func (s *BranchService) GetCommitFileDiff(ctx context.Context, repoPath string, commitHash string, filePath string) (string, error) {
+	out, err := s.runner.Run(ctx, repoPath, "show", commitHash, "--", filePath)
+	return out, err
+}
+
+
 
