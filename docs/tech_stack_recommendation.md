@@ -1,80 +1,121 @@
-# Tech Stack Evaluation: Go (Wails) vs. Electron vs. Tauri
+# Tech Stack Evaluation: Go (Wails) Backend & Reactive Frontend Alternatives
 
-This document provides an in-depth evaluation of using **Go (Golang)** with **Wails v2/v3** for building **OnoGitTree**, comparing it directly with Electron and Tauri for memory efficiency, raw execution speed, reliability, and advanced Git capabilities (Diffs, Graphs, and Conflict Resolvers).
-
----
-
-## 1. Why Go (Wails) is an Exceptional Choice for a Git GUI
-
-Yes, **Golang is not only possible—it is one of the best choices** for a multi-repository Git client on Ubuntu/Linux.
-
-### 🌟 Key Advantages of Go + Wails:
-1. **Ultra-Low Memory Footprint (35–60 MB RAM)**:
-   - Electron bundles an entire Chromium browser and Node.js runtime, typically consuming **180–350 MB** idle.
-   - Wails uses Linux's native `WebKitGTK` for the UI layer and compiles the Go backend directly into native machine code, keeping idle RAM at **~45 MB**.
-2. **First-Class Concurrency with Goroutines & Channels**:
-   - Spawning 20+ concurrent `git fetch` or `git pull` operations across repositories is trivial in Go using worker pools (`sync.WaitGroup`, buffered channels).
-   - Low scheduling overhead compared to Node.js event-loop process spawning or heavy OS threads.
-3. **Context-Aware Cancellation & Timeout Safety**:
-   - Go's `context.Context` allows instant cancellation of hanging Git processes (e.g. SSH timeout after 10 seconds) without leaking zombie processes.
-4. **Single Static Binary Distribution**:
-   - Produces a single executable binary (`onogitree`) without massive `node_modules` or runtime packaging bloat.
-5. **Seamless Go-to-TypeScript IPC**:
-   - Wails automatically generates TypeScript bindings and types for all Go methods in real-time during development.
+This document evaluates the architectural choices for **OnoGitTree**, focusing on **Go (Wails)** for the backend and modern **zero-re-render, non-VDOM frontend alternatives** to React (SolidJS, Svelte 5, Vue 3).
 
 ---
 
-## 2. Framework Comparison: Go (Wails) vs. Electron vs. Tauri
+## 1. Why Move Beyond React? (The Re-render & `useEffect` Problem)
 
-| Criterion | **Go + Wails (v2/v3)** | **Electron + TypeScript** | **Rust + Tauri (v2)** |
-| :--- | :--- | :--- | :--- |
-| **Idle Memory (RAM)** | 🟢 **~45 MB** | 🔴 **~220 MB** | 🟢 **~40 MB** |
-| **Binary Size** | 🟢 **~15 MB** | 🔴 **~110 MB** | 🟢 **~12 MB** |
-| **Cold Startup Time** | 🟢 **< 0.3s** | 🟡 **~1.5s - 2.5s** | 🟢 **< 0.3s** |
-| **Batch Concurrency** | 🟢 **Goroutines (Ultra-fast)** | 🟡 Node.js Child Process Pool | 🟢 Tokio async tasks |
-| **Development Speed** | 🟢 **High** (Go + React/TS) | 🟢 **Very High** (Pure TS) | 🟡 **Moderate** (Rust complexity) |
-| **System Prerequisites** | Go `go1.25` (Already installed!) | Node.js `v24` (Already installed!) | Rust toolchain required |
-| **Git Engine** | Spawning CLI (`os/exec`) + `go-git` | Spawning CLI (`execa`) + TS | Spawning CLI (`std::process`) + `git2` |
+In real-time developer desktop tools (where Git status streams, batch progress updates, and file watchers fire dozens of events per second), **React's Virtual DOM architecture presents well-known friction**:
+
+| React Pain Point | Technical Reason | Impact on Desktop Git Clients |
+| :--- | :--- | :--- |
+| **Component Re-render Cascades** | Whenever state changes, the entire component function re-executes top-to-bottom. | Typing in a filter bar or receiving a git status event can trigger re-renders across 20+ repo tree nodes. |
+| **`useEffect` Dependency Hell** | Requires manual dependency arrays `[depA, depB]`. Missing a dependency creates stale closures; adding objects causes infinite loops. | Complex Git background polling and IPC event listeners become fragile and bug-prone. |
+| **`useMemo` / `useCallback` Boilerplate** | Required everywhere to prevent child components from re-rendering on parent state changes. | High mental overhead and cluttered code. |
+| **Virtual DOM Diffing Overhead** | React creates an in-memory JS tree and diffs it against the real DOM on every tick. | Wastes CPU cycles and increases battery/RAM usage on Linux. |
 
 ---
 
-## 3. How Core Git Features Are Handled in Go + Wails
+## 2. Modern High-Performance Alternatives: SolidJS vs. Svelte 5
 
 ```
-+-------------------------------------------------------------------------------+
-|                             REACT / WEB FRONTEND                             |
-|  [Multi-Repo Tree]  |  [Interactive Git Graph]  |  [Diff Viewer / 3-Way Merge] |
-+-------------------------------------------------------------------------------+
-                                      ▲
-                         Wails Auto-Generated IPC Bindings
-                                      ▼
-+-------------------------------------------------------------------------------+
-|                               GO BACKEND CORE                                 |
-|  - GitProcessManager (os/exec + context.WithTimeout)                          |
-|  - BatchWorkerPool (Goroutines + Semaphore Channels)                         |
-|  - Inotify Ref Watcher (fsnotify on .git/HEAD & .git/refs)                    |
-|  - GitLogGraphParser (Topological Commit DAG builder)                         |
-|  - Diff & MergeConflictService (3-way buffer extractor)                       |
-+-------------------------------------------------------------------------------+
-                                      ▲
-                                      ▼
-                        Host Git CLI (/usr/bin/git)
++----------------------------------------------------------------------------------------------------+
+|                                 REACTIVITY COMPARISON MATRIX                                       |
++----------------------+--------------------+--------------------+-----------------------------------+
+| Feature              | React 19           | SolidJS (Signals)  | Svelte 5 (Runes)                  |
++----------------------+--------------------+--------------------+-----------------------------------+
+| Component Execution  | Runs on EVERY tick | Runs EXACTLY ONCE  | Runs EXACTLY ONCE                 |
+| Virtual DOM          | YES (Heavy diffs)  | NO (0% VDOM)       | NO (0% VDOM)                      |
+| Dependency Arrays    | Required in hooks  | NONE (Auto-track)  | NONE (Auto-track)                 |
+| Reactivity Engine    | State snapshot     | Fine-grained Signal| Fine-grained Compiler Runes       |
+| Idle Memory / CPU    | Moderate           | Minimal            | Minimal                           |
+| Syntax Style         | JSX + Hooks        | JSX + Signals      | HTML Templates + Runes            |
+| Benchmarks           | ~1.7x Baseline     | ~1.05x (Near C/JS) | ~1.10x (Near C/JS)                |
++----------------------+--------------------+--------------------+-----------------------------------+
 ```
-
-### 1. Git Diff Engine
-- **Go Backend**: Runs `git diff -U3 --color=never` or `git diff --staged` with streaming output parsing. Parses file headers, line changes, and chunk offsets into structured JSON payloads.
-- **Frontend**: Renders responsive Side-by-Side (Split) or Unified Diff views with syntax highlighting (powered by Monaco Editor Diff or `@git-diff-view/react`).
-
-### 2. Git Commit Graph (DAG Visualizer)
-- **Go Backend**: Executes `git log --all --topo-order --pretty=format:"%H|%P|%an|%ae|%at|%s|%D"` and calculates branch rail lines and merge coordinates in nanoseconds.
-- **Frontend**: Renders an interactive, smooth SVG/Canvas commit graph with clickable commit nodes, branch badges, tag markers, and commit details.
-
-### 3. Git Merge Conflict Resolver (3-Way Merge)
-- **Go Backend**: Detects unmerged files (`git status --porcelain`). Extracts the 3 conflict states (`:1:base`, `:2:ours`, `:3:theirs`) using `git show`. Provides atomic commands to resolve (`git checkout --ours`, `git checkout --theirs`, or writing the merged buffer and running `git add`).
-- **Frontend**: 3-pane interactive conflict editor (Current / Base / Incoming / Merged Output) with one-click resolution buttons (*"Accept Current"*, *"Accept Incoming"*, *"Accept Both"*).
 
 ---
 
-## 4. Final Recommendation: **Go (Wails) + React + Vite + Tailwind**
+## 3. Code Comparison: Multi-Repo Item with Real-Time Status
 
-Since **Go is already installed on your Ubuntu system (`go1.25.14`)** and you prioritize **memory optimization, speed, and reliability**, **Go + Wails** is the optimal architecture for OnoGitTree.
+### ❌ React (Frequent re-renders, `useEffect` dependencies, `useCallback`):
+```tsx
+// React: Entire component function runs again whenever `status` or `isExpanded` changes
+function RepoRow({ repo, onPull }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Fragile dependency array
+  useEffect(() => {
+    const unsub = window.runtime.EventsOn(`repo:${repo.id}:status`, (newStatus) => {
+      // triggers full re-render of RepoRow and all its children
+    });
+    return () => unsub();
+  }, [repo.id]);
+
+  const handlePull = useCallback(() => onPull(repo.id), [repo.id, onPull]);
+
+  return (
+    <div>
+      <span>{repo.name}</span>
+      <span>{repo.branch}</span>
+      <button onClick={handlePull}>Pull</button>
+    </div>
+  );
+}
+```
+
+### ⚡ SolidJS (Component runs ONCE. ZERO re-renders. Fine-grained Signals):
+```tsx
+// SolidJS: Function executes ONCE on mount like a constructor.
+// When repo.status() updates, ONLY the single text node inside the span is modified in the DOM!
+function RepoRow(props: { repo: Repo; onPull: (id: string) => void }) {
+  const [isExpanded, setIsExpanded] = createSignal(false);
+
+  // Auto-tracked effect without dependency arrays
+  createEffect(() => {
+    console.log("Active branch is now:", props.repo.branch());
+  });
+
+  return (
+    <div>
+      <span>{props.repo.name}</span>
+      <span>{props.repo.branch()}</span>
+      <button onClick={() => props.onPull(props.repo.id)}>Pull</button>
+    </div>
+  );
+}
+```
+
+### 🪄 Svelte 5 (Compiler Runes, Zero Boilerplate):
+```svelte
+<!-- Svelte 5: Clean, compiled reactive state -->
+<script lang="ts">
+  let { repo, onPull } = $props<{ repo: Repo; onPull: (id: string) => void }>();
+  let isExpanded = $state(false);
+
+  // Derived state automatically tracks dependencies
+  let statusText = $derived(`${repo.ahead} ahead, ${repo.behind} behind`);
+</script>
+
+<div class="repo-row">
+  <span>{repo.name}</span>
+  <span>{statusText}</span>
+  <button onclick={() => onPull(repo.id)}>Pull</button>
+</div>
+```
+
+---
+
+## 4. Final Recommendation for OnoGitTree Frontend
+
+### 🥇 Choice 1: **SolidJS + TypeScript + Tailwind CSS**
+- **Why**:
+  1. Uses **JSX and TypeScript**, so existing React libraries and knowledge (Tailwind, Lucide icons, Monaco editor, Canvas graphs) work with minimal learning curve.
+  2. **Components run once**. Fine-grained signals guarantee that when a background `git status` or `git fetch` completes for repository #4, **only repository #4's badge updates** in the DOM—zero impact on the other 19 repositories.
+  3. No `useEffect` dependency arrays, no stale closures, no `useCallback`/`useMemo` noise.
+
+### 🥈 Choice 2: **Svelte 5 + TypeScript + Tailwind CSS**
+- **Why**:
+  1. Most concise and readable syntax with `$state`, `$derived`, and `$effect`.
+  2. Tiny compiled bundle, no runtime overhead, native Wails project template available out of the box (`wails init -t svelte-ts`).
