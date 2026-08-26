@@ -21,6 +21,8 @@ pnpm-debug.log*
 .pnpm-store/
 .turbo/
 coverage/
+*.md5
+
 
 # Wails generated bindings (regenerated on build)
 frontend/wailsjs/
