@@ -112,8 +112,18 @@ func (s *BranchService) DiscardFiles(ctx context.Context, repoPath string, files
 	return nil
 }
 
-// GetFileDiff returns unified diff output for a specified file.
+// GetFileDiff returns unified diff output for a specified file, or all files if filePath is empty or "__ALL__".
 func (s *BranchService) GetFileDiff(ctx context.Context, repoPath string, filePath string, staged bool) (string, error) {
+	if filePath == "" || filePath == "__ALL__" {
+		if staged {
+			return s.runner.Run(ctx, repoPath, "diff", "--cached")
+		}
+		out, err := s.runner.Run(ctx, repoPath, "diff", "HEAD")
+		if err != nil || strings.TrimSpace(out) == "" {
+			return s.runner.Run(ctx, repoPath, "diff")
+		}
+		return out, nil
+	}
 	if staged {
 		out, err := s.runner.Run(ctx, repoPath, "diff", "--cached", "--", filePath)
 		return out, err

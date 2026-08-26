@@ -5,6 +5,7 @@ import {
   ChevronsUpDown,
   Plus,
   Minus,
+  FileDiff,
 } from "lucide-solid";
 import { repoStore } from "../../../store/repoStore";
 import { RepoStatus, FileStatus } from "../../../types/git";
@@ -190,6 +191,15 @@ export const OutgoingGraphNode: Component<OutgoingGraphNodeProps> = (props) => {
                     <span>{isAllExpanded() ? "Collapse All" : "Expand All"}</span>
                   </button>
                 </Show>
+
+                <button
+                  onClick={() => repoStore.selectFileForDiff("__ALL__", false)}
+                  class="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 border border-indigo-300 dark:border-indigo-500/30 text-indigo-800 dark:text-indigo-300 rounded font-semibold text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                  title="View combined diff of all uncommitted changes"
+                >
+                  <FileDiff class="w-3 h-3 text-indigo-500 dark:text-indigo-400" />
+                  <span>View All Changes</span>
+                </button>
 
                 <button
                   onClick={() => repoStore.stageFiles(props.repo.path, [])}

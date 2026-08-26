@@ -8,6 +8,7 @@ import {
   FileCode,
   Plus,
   Minus,
+  FileDiff,
 } from "lucide-solid";
 import { repoStore } from "../../../store/repoStore";
 import { settingsStore } from "../../../store/settingsStore";
@@ -147,6 +148,15 @@ export const UncommittedChangesCard: Component<UncommittedChangesCardProps> = (p
             </div>
 
             <div class="h-4 w-px bg-gray-700 mx-0.5" />
+
+            <button
+              onClick={() => repoStore.selectFileForDiff("__ALL__", false)}
+              class="px-2.5 py-1 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/35 text-indigo-300 hover:text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="View combined diff of all uncommitted changes"
+            >
+              <FileDiff class="w-3.5 h-3.5 text-indigo-400" />
+              <span>View All Changes</span>
+            </button>
 
             <button
               onClick={() => repoStore.stageFiles(props.repo.path, [])}
