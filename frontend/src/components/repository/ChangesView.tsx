@@ -1,4 +1,12 @@
-import { Component, createSignal, createMemo, For, Show } from "solid-js";
+import {
+  Component,
+  createSignal,
+  createMemo,
+  For,
+  Show,
+  onMount,
+  onCleanup,
+} from "solid-js";
 import {
   Check,
   Plus,
@@ -33,6 +41,33 @@ export const ChangesView: Component = () => {
   const [collapsedFolders, setCollapsedFolders] = createSignal<
     Record<string, boolean>
   >({});
+  let optionsMenuRef: HTMLDivElement | undefined;
+  let commitMenuRef: HTMLDivElement | undefined;
+
+  const handleOutsideClick = (e: MouseEvent) => {
+    if (
+      showOptionsMenu() &&
+      optionsMenuRef &&
+      !optionsMenuRef.contains(e.target as Node)
+    ) {
+      setShowOptionsMenu(false);
+    }
+    if (
+      showCommitMenu() &&
+      commitMenuRef &&
+      !commitMenuRef.contains(e.target as Node)
+    ) {
+      setShowCommitMenu(false);
+    }
+  };
+
+  onMount(() => {
+    document.addEventListener("mousedown", handleOutsideClick);
+  });
+
+  onCleanup(() => {
+    document.removeEventListener("mousedown", handleOutsideClick);
+  });
 
   const [selectedContextMenu, setSelectedContextMenu] = createSignal<{
     x: number;
@@ -346,7 +381,7 @@ export const ChangesView: Component = () => {
               </button>
 
               {/* More Options Dropdown */}
-              <div class="relative">
+              <div ref={optionsMenuRef} class="relative">
                 <button
                   onClick={() => setShowOptionsMenu(!showOptionsMenu())}
                   class="p-1 hover:bg-carbon-hover rounded text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
@@ -500,7 +535,7 @@ export const ChangesView: Component = () => {
                   </span>
                 </button>
 
-                <div class="relative">
+                <div ref={commitMenuRef} class="relative">
                   <button
                     onClick={() => setShowCommitMenu(!showCommitMenu())}
                     class="p-1.5 bg-emerald-500 hover:bg-emerald-400 text-gray-950 rounded cursor-pointer"

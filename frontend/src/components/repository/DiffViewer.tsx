@@ -5,7 +5,10 @@ import {
   createMemo,
   Show,
   For,
+  onMount,
+  onCleanup,
 } from "solid-js";
+
 import {
   FileCode,
   X,
@@ -57,6 +60,25 @@ export const DiffViewer: Component = () => {
   const [collapsedFileIds, setCollapsedFileIds] = createSignal<Set<string>>(
     new Set<string>(),
   );
+  let moreMenuContainerRef: HTMLDivElement | undefined;
+
+  const handleOutsideClick = (e: MouseEvent) => {
+    if (
+      showMoreMenu() &&
+      moreMenuContainerRef &&
+      !moreMenuContainerRef.contains(e.target as Node)
+    ) {
+      setShowMoreMenu(false);
+    }
+  };
+
+  onMount(() => {
+    document.addEventListener("mousedown", handleOutsideClick);
+  });
+
+  onCleanup(() => {
+    document.removeEventListener("mousedown", handleOutsideClick);
+  });
 
   const selectedDiff = () => repoStore.selectedFileDiff();
   const activeRepo = () => repoStore.selectedRepo();
@@ -421,7 +443,7 @@ export const DiffViewer: Component = () => {
               </Show>
 
               {/* More Options Dropdown */}
-              <div class="relative">
+              <div ref={moreMenuContainerRef} class="relative">
                 <button
                   onClick={() => setShowMoreMenu(!showMoreMenu())}
                   class="p-1.5 bg-[#181D2B] hover:bg-[#22293D] border border-gray-700/60 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer"
