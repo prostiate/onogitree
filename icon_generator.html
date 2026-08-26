@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OnoGitTree • Application Icon Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #0A0C10;
+      color: #E2E8F0;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .checkboard {
+      background-image: linear-gradient(45deg, #12151E 25%, transparent 25%), 
+                        linear-gradient(-45deg, #12151E 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #12151E 75%), 
+                        linear-gradient(-45deg, transparent 75%, #12151E 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6 md:p-10 select-none">
+  <!-- Top Hero Header -->
+  <header class="max-w-5xl w-full flex items-center justify-between pb-8 border-b border-gray-800/80 mb-8">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-emerald-400 p-0.5 shadow-lg shadow-indigo-500/20 flex items-center justify-center">
+        <div class="w-full h-full bg-[#0E1117] rounded-[10px] flex items-center justify-center text-lg">🌳</div>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+          OnoGitTree <span class="text-xs px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded-full font-mono font-medium">Icon Studio</span>
+        </h1>
+        <p class="text-xs text-gray-400">Design, customize and export application icons for compilation</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button onclick="exportSingle(512, 'appicon.png')" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold text-xs rounded-lg transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-1.5 cursor-pointer">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        <span>Export appicon.png (512x512)</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Studio Workspace -->
+  <main class="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- Left Controls Panel -->
+    <div class="lg:col-span-6 bg-[#11141D] border border-gray-800 rounded-2xl p-6 space-y-6 shadow-xl">
+      
+      <!-- Preset Templates -->
+      <div class="space-y-2">
+        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400">Icon Style Preset</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="applyPreset('dag-tree')" class="px-3 py-2 bg-[#171B26] hover:bg-[#1F2433] border border-gray-700/50 rounded-xl text-left text-xs font-semibold text-gray-200 flex items-center gap-2 transition-all">
+            <span class="text-base">🌳</span>
+            <span>Luminous DAG Tree</span>
+          </button>
+          <button onclick="applyPreset('cyber-neon')" class="px-3 py-2 bg-[#171B26] hover:bg-[#1F2433] border border-gray-700/50 rounded-xl text-left text-xs font-semibold text-gray-200 flex items-center gap-2 transition-all">
+            <span class="text-base">⚡</span>
+            <span>Cyber Obsidian</span>
+          </button>
+          <button onclick="applyPreset('poly-monogram')" class="px-3 py-2 bg-[#171B26] hover:bg-[#1F2433] border border-gray-700/50 rounded-xl text-left text-xs font-semibold text-gray-200 flex items-center gap-2 transition-all">
+            <span class="text-base">⌘</span>
+            <span>Poly Monogram</span>
+          </button>
+          <button onclick="applyPreset('emerald-minimal')" class="px-3 py-2 bg-[#171B26] hover:bg-[#1F2433] border border-gray-700/50 rounded-xl text-left text-xs font-semibold text-gray-200 flex items-center gap-2 transition-all">
+            <span class="text-base">🌿</span>
+            <span>Emerald Minimal</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Upload Custom Image Logo -->
+      <div class="space-y-2 pt-2 border-t border-gray-800">
+        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center justify-between">
+          <span>Personalize With Custom Image</span>
+          <span class="text-[11px] text-indigo-400 font-normal font-mono">PNG, SVG, JPG</span>
+        </label>
+        <div class="relative">
+          <input type="file" id="logoUpload" accept="image/*" onchange="handleImageUpload(event)" class="hidden" />
+          <button onclick="document.getElementById('logoUpload').click()" class="w-full py-2.5 px-4 bg-[#181C28] hover:bg-[#202536] border border-dashed border-gray-700 hover:border-indigo-500 rounded-xl text-xs text-gray-300 flex items-center justify-center gap-2 transition-all cursor-pointer">
+            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            <span id="uploadLabel">Upload Custom Logo File...</span>
+          </button>
+        </div>
+        <div id="clearImageContainer" class="hidden flex justify-end">
+          <button onclick="clearCustomImage()" class="text-[11px] text-rose-400 hover:underline">Remove custom image</button>
+        </div>
+      </div>
+
+      <!-- Colors & Lighting -->
+      <div class="space-y-3 pt-2 border-t border-gray-800">
+        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400">Background & Lighting</label>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <span class="block text-[11px] text-gray-400 mb-1">Start Color</span>
+            <div class="flex items-center gap-2 bg-[#171B26] p-1.5 rounded-lg border border-gray-700/60">
+              <input type="color" id="bgStart" value="#0F1117" oninput="renderIcon()" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0" />
+              <input type="text" id="bgStartText" value="#0F1117" oninput="syncColor('bgStart', this.value)" class="w-full bg-transparent text-xs font-mono text-gray-200 outline-none" />
+            </div>
+          </div>
+          <div>
+            <span class="block text-[11px] text-gray-400 mb-1">End Color</span>
+            <div class="flex items-center gap-2 bg-[#171B26] p-1.5 rounded-lg border border-gray-700/60">
+              <input type="color" id="bgEnd" value="#1E2333" oninput="renderIcon()" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0" />
+              <input type="text" id="bgEndText" value="#1E2333" oninput="syncColor('bgEnd', this.value)" class="w-full bg-transparent text-xs font-mono text-gray-200 outline-none" />
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <span class="block text-[11px] text-gray-400 mb-1">Accent Glow Hue</span>
+            <div class="flex items-center gap-2 bg-[#171B26] p-1.5 rounded-lg border border-gray-700/60">
+              <input type="color" id="accentColor" value="#10B981" oninput="renderIcon()" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0" />
+              <input type="text" id="accentText" value="#10B981" oninput="syncColor('accentColor', this.value)" class="w-full bg-transparent text-xs font-mono text-gray-200 outline-none" />
+            </div>
+          </div>
+          <div>
+            <span class="block text-[11px] text-gray-400 mb-1">Branch Color</span>
+            <div class="flex items-center gap-2 bg-[#171B26] p-1.5 rounded-lg border border-gray-700/60">
+              <input type="color" id="branchColor" value="#6366F1" oninput="renderIcon()" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0" />
+              <input type="text" id="branchText" value="#6366F1" oninput="syncColor('branchColor', this.value)" class="w-full bg-transparent text-xs font-mono text-gray-200 outline-none" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Geometry & Shaping -->
+      <div class="space-y-3 pt-2 border-t border-gray-800">
+        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400">Geometry & Radii</label>
+        
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs text-gray-300">
+            <span>Corner Squircle Radius</span>
+            <span id="radiusVal" class="font-mono text-indigo-400">22%</span>
+          </div>
+          <input type="range" id="radiusInput" min="0" max="50" value="22" oninput="renderIcon()" class="w-full accent-indigo-500 cursor-pointer" />
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs text-gray-300">
+            <span>Outer Border & Rim Glow</span>
+            <span id="borderVal" class="font-mono text-indigo-400">1.5px</span>
+          </div>
+          <input type="range" id="borderInput" min="0" max="8" step="0.5" value="2" oninput="renderIcon()" class="w-full accent-indigo-500 cursor-pointer" />
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs text-gray-300">
+            <span>Ambient Inner Glow Strength</span>
+            <span id="glowVal" class="font-mono text-indigo-400">65%</span>
+          </div>
+          <input type="range" id="glowInput" min="0" max="100" value="65" oninput="renderIcon()" class="w-full accent-indigo-500 cursor-pointer" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Live Preview & Export Hub -->
+    <div class="lg:col-span-6 flex flex-col items-center space-y-6">
+      
+      <!-- Main High-Res Canvas View -->
+      <div class="w-full bg-[#11141D] border border-gray-800 rounded-2xl p-8 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl checkboard">
+        <div class="relative flex items-center justify-center p-6">
+          <canvas id="iconCanvas" width="512" height="512" class="w-64 h-64 md:w-80 md:h-80 shadow-2xl rounded-2xl transform transition-transform hover:scale-105 duration-200"></canvas>
+        </div>
+
+        <div class="mt-4 px-3 py-1 bg-[#171B26] border border-gray-700/60 rounded-full text-[11px] font-mono text-gray-400">
+          512 × 512 px Vector-Accurate Render
+        </div>
+      </div>
+
+      <!-- Resolution Multi-Export Cards -->
+      <div class="w-full bg-[#11141D] border border-gray-800 rounded-2xl p-5 space-y-3">
+        <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider">Multi-Resolution Exports</h3>
+        
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <button onclick="exportSingle(1024, 'appicon-1024.png')" class="p-2.5 bg-[#171B26] hover:bg-[#202534] border border-gray-700/60 rounded-xl text-center cursor-pointer transition-all">
+            <span class="block font-bold text-white">1024px</span>
+            <span class="text-[10px] text-gray-400 font-mono">HiDPI Retina</span>
+          </button>
+
+          <button onclick="exportSingle(512, 'appicon.png')" class="p-2.5 bg-emerald-500/15 border border-emerald-500/40 hover:bg-emerald-500/25 rounded-xl text-center cursor-pointer transition-all text-emerald-300">
+            <span class="block font-bold">512px (Wails)</span>
+            <span class="text-[10px] font-mono">appicon.png</span>
+          </button>
+
+          <button onclick="exportSingle(256, 'appicon-256.png')" class="p-2.5 bg-[#171B26] hover:bg-[#202534] border border-gray-700/60 rounded-xl text-center cursor-pointer transition-all">
+            <span class="block font-bold text-white">256px</span>
+            <span class="text-[10px] text-gray-400 font-mono">App Launcher</span>
+          </button>
+
+          <button onclick="exportSingle(64, 'appicon-64.png')" class="p-2.5 bg-[#171B26] hover:bg-[#202534] border border-gray-700/60 rounded-xl text-center cursor-pointer transition-all">
+            <span class="block font-bold text-white">64px / 32px</span>
+            <span class="text-[10px] text-gray-400 font-mono">Taskbar Icon</span>
+          </button>
+        </div>
+
+        <div class="pt-2">
+          <button onclick="exportAllSizesZip()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            <span>Download Complete Icon Suite (.png)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let customImage = null;
+    let activePreset = 'dag-tree';
+
+    function syncColor(id, val) {
+      document.getElementById(id).value = val;
+      renderIcon();
+    }
+
+    function applyPreset(preset) {
+      activePreset = preset;
+      if (preset === 'dag-tree') {
+        document.getElementById('bgStart').value = '#0A0E17';
+        document.getElementById('bgEnd').value = '#161D2B';
+        document.getElementById('accentColor').value = '#10B981';
+        document.getElementById('branchColor').value = '#6366F1';
+        document.getElementById('radiusInput').value = '22';
+      } else if (preset === 'cyber-neon') {
+        document.getElementById('bgStart').value = '#000000';
+        document.getElementById('bgEnd').value = '#0A0A0A';
+        document.getElementById('accentColor').value = '#06B6D4';
+        document.getElementById('branchColor').value = '#A855F7';
+        document.getElementById('radiusInput').value = '24';
+      } else if (preset === 'poly-monogram') {
+        document.getElementById('bgStart').value = '#12141F';
+        document.getElementById('bgEnd').value = '#1C2133';
+        document.getElementById('accentColor').value = '#818CF8';
+        document.getElementById('branchColor').value = '#38BDF8';
+        document.getElementById('radiusInput').value = '20';
+      } else if (preset === 'emerald-minimal') {
+        document.getElementById('bgStart').value = '#061712';
+        document.getElementById('bgEnd').value = '#0C2A21';
+        document.getElementById('accentColor').value = '#34D399';
+        document.getElementById('branchColor').value = '#059669';
+        document.getElementById('radiusInput').value = '26';
+      }
+      renderIcon();
+    }
+
+    function handleImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          customImage = img;
+          document.getElementById('uploadLabel').innerText = file.name;
+          document.getElementById('clearImageContainer').classList.remove('hidden');
+          renderIcon();
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearCustomImage() {
+      customImage = null;
+      document.getElementById('uploadLabel').innerText = 'Upload Custom Logo File...';
+      document.getElementById('clearImageContainer').classList.add('hidden');
+      document.getElementById('logoUpload').value = '';
+      renderIcon();
+    }
+
+    function renderIcon(targetCanvas = null, size = 512) {
+      const canvas = targetCanvas || document.getElementById('iconCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = size;
+      canvas.height = size;
+      ctx.clearRect(0, 0, size, size);
+
+      const bgStart = document.getElementById('bgStart').value;
+      const bgEnd = document.getElementById('bgEnd').value;
+      const accent = document.getElementById('accentColor').value;
+      const branch = document.getElementById('branchColor').value;
+      const radiusPercent = parseInt(document.getElementById('radiusInput').value, 10);
+      const borderWidth = (parseFloat(document.getElementById('borderInput').value) / 512) * size * 2;
+      const glowStrength = parseInt(document.getElementById('glowInput').value, 10) / 100;
+
+      document.getElementById('bgStartText').value = bgStart;
+      document.getElementById('bgEndText').value = bgEnd;
+      document.getElementById('accentText').value = accent;
+      document.getElementById('branchText').value = branch;
+      document.getElementById('radiusVal').innerText = radiusPercent + '%';
+      document.getElementById('borderVal').innerText = document.getElementById('borderInput').value + 'px';
+      document.getElementById('glowVal').innerText = Math.round(glowStrength * 100) + '%';
+
+      const cornerRadius = (size * radiusPercent) / 100;
+
+      // 1. Draw rounded background box
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, cornerRadius);
+      ctx.clip();
+
+      const bgGrad = ctx.createLinearGradient(0, 0, size, size);
+      bgGrad.addColorStop(0, bgStart);
+      bgGrad.addColorStop(1, bgEnd);
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, size, size);
+
+      // Ambient radial glow from top-center
+      if (glowStrength > 0) {
+        const glowGrad = ctx.createRadialGradient(size * 0.5, size * 0.35, size * 0.05, size * 0.5, size * 0.35, size * 0.65);
+        glowGrad.addColorStop(0, accent + Math.round(glowStrength * 90).toString(16).padStart(2, '0'));
+        glowGrad.addColorStop(0.5, branch + Math.round(glowStrength * 40).toString(16).padStart(2, '0'));
+        glowGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = glowGrad;
+        ctx.fillRect(0, 0, size, size);
+      }
+
+      // 2. Render Icon Content (Custom Image or Vector DAG Tree)
+      if (customImage) {
+        // Draw uploaded logo centered with padding
+        const padding = size * 0.22;
+        const imgW = size - padding * 2;
+        const imgH = size - padding * 2;
+        ctx.shadowColor = accent;
+        ctx.shadowBlur = 24 * (size / 512);
+        ctx.drawImage(customImage, padding, padding, imgW, imgH);
+      } else {
+        // Draw Vector Git Tree DAG
+        renderVectorDAGTree(ctx, size, accent, branch);
+      }
+
+      ctx.restore();
+
+      // 3. Draw Outer Border Stroke with subtle specular highlight
+      if (borderWidth > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(borderWidth / 2, borderWidth / 2, size - borderWidth, size - borderWidth, cornerRadius);
+        const borderGrad = ctx.createLinearGradient(0, 0, size, size);
+        borderGrad.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+        borderGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.08)');
+        borderGrad.addColorStop(1, 'rgba(255, 255, 255, 0.02)');
+        ctx.strokeStyle = borderGrad;
+        ctx.lineWidth = borderWidth;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function renderVectorDAGTree(ctx, size, accent, branch) {
+      const scale = size / 512;
+      ctx.save();
+
+      // Root Trunk & Branch curves
+      ctx.lineWidth = 14 * scale;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Left Branch
+      ctx.beginPath();
+      ctx.strokeStyle = branch;
+      ctx.moveTo(256 * scale, 390 * scale);
+      ctx.bezierCurveTo(256 * scale, 310 * scale, 170 * scale, 310 * scale, 170 * scale, 220 * scale);
+      ctx.lineTo(170 * scale, 160 * scale);
+      ctx.stroke();
+
+      // Right Branch
+      ctx.beginPath();
+      ctx.strokeStyle = accent;
+      ctx.moveTo(256 * scale, 390 * scale);
+      ctx.bezierCurveTo(256 * scale, 290 * scale, 342 * scale, 290 * scale, 342 * scale, 210 * scale);
+      ctx.lineTo(342 * scale, 140 * scale);
+      ctx.stroke();
+
+      // Center Trunk
+      ctx.beginPath();
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.moveTo(256 * scale, 410 * scale);
+      ctx.lineTo(256 * scale, 120 * scale);
+      ctx.stroke();
+
+      // Node Commit Circles with glow
+      drawCommitNode(ctx, 256 * scale, 410 * scale, 18 * scale, '#FFFFFF', accent);
+      drawCommitNode(ctx, 256 * scale, 260 * scale, 15 * scale, '#FFFFFF', branch);
+      drawCommitNode(ctx, 256 * scale, 120 * scale, 20 * scale, accent, '#FFFFFF');
+
+      drawCommitNode(ctx, 170 * scale, 220 * scale, 15 * scale, branch, '#FFFFFF');
+      drawCommitNode(ctx, 170 * scale, 150 * scale, 17 * scale, branch, '#FFFFFF');
+
+      drawCommitNode(ctx, 342 * scale, 210 * scale, 15 * scale, accent, '#FFFFFF');
+      drawCommitNode(ctx, 342 * scale, 130 * scale, 17 * scale, accent, '#FFFFFF');
+
+      // Subtle Tree Crown Top Badge
+      ctx.font = `bold ${42 * scale}px "Plus Jakarta Sans", sans-serif`;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = accent;
+      ctx.shadowBlur = 18 * scale;
+      
+      ctx.restore();
+    }
+
+    function drawCommitNode(ctx, x, y, r, fill, glow) {
+      ctx.save();
+      ctx.shadowColor = glow;
+      ctx.shadowBlur = r * 1.5;
+      
+      // Outer ring
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      // Inner dark core
+      ctx.beginPath();
+      ctx.arc(x, y, r * 0.45, 0, Math.PI * 2);
+      ctx.fillStyle = '#0F1117';
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function exportSingle(size, filename) {
+      const tempCanvas = document.createElement('canvas');
+      renderIcon(tempCanvas, size);
+      
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = tempCanvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function exportAllSizesZip() {
+      const sizes = [1024, 512, 256, 128, 64, 32];
+      sizes.forEach((s) => {
+        setTimeout(() => {
+          exportSingle(s, `appicon-${s}x${s}.png`);
+        }, s);
+      });
+    }
+
+    // Initialize on load
+    window.onload = () => {
+      renderIcon();
+    };
+  </script>
+</body>
+</html>

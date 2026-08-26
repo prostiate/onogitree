@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A0E17" />
+      <stop offset="100%" stop-color="#161D2B" />
+    </linearGradient>
+    <linearGradient id="branchGradLeft" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#818CF8" />
+    </linearGradient>
+    <linearGradient id="branchGradRight" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#34D399" />
+    </linearGradient>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.4)" />
+      <stop offset="50%" stop-color="rgba(255,255,255,0.1)" />
+      <stop offset="100%" stop-color="rgba(255,255,255,0.02)" />
+    </linearGradient>
+    <radialGradient id="ambientGlow" cx="50%" cy="35%" r="55%">
+      <stop offset="0%" stop-color="rgba(16,185,129,0.35)" />
+      <stop offset="50%" stop-color="rgba(99,102,241,0.2)" />
+      <stop offset="100%" stop-color="transparent" />
+    </radialGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Squircle Base (22% radius) -->
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="url(#bgGrad)" />
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="url(#ambientGlow)" />
+
+  <!-- Vector Git Tree DAG Structure -->
+  <g filter="url(#glow)">
+    <!-- Left Branch Path -->
+    <path d="M 256 390 C 256 310, 170 310, 170 220 L 170 160" fill="none" stroke="url(#branchGradLeft)" stroke-width="14" stroke-linecap="round" />
+    
+    <!-- Right Branch Path -->
+    <path d="M 256 390 C 256 290, 342 290, 342 210 L 342 140" fill="none" stroke="url(#branchGradRight)" stroke-width="14" stroke-linecap="round" />
+    
+    <!-- Central Main Trunk -->
+    <path d="M 256 410 L 256 120" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" />
+
+    <!-- Nodes: Root & Branch Commits -->
+    <!-- Root -->
+    <circle cx="256" cy="410" r="18" fill="#FFFFFF" />
+    <circle cx="256" cy="410" r="8" fill="#0A0E17" />
+
+    <!-- Trunk Middle -->
+    <circle cx="256" cy="260" r="15" fill="#818CF8" />
+    <circle cx="256" cy="260" r="6" fill="#0A0E17" />
+
+    <!-- Trunk Top -->
+    <circle cx="256" cy="120" r="20" fill="#10B981" />
+    <circle cx="256" cy="120" r="9" fill="#0A0E17" />
+
+    <!-- Left Branch Nodes -->
+    <circle cx="170" cy="220" r="15" fill="#6366F1" />
+    <circle cx="170" cy="220" r="6" fill="#0A0E17" />
+    <circle cx="170" cy="150" r="17" fill="#818CF8" />
+    <circle cx="170" cy="150" r="7" fill="#0A0E17" />
+
+    <!-- Right Branch Nodes -->
+    <circle cx="342" cy="210" r="15" fill="#10B981" />
+    <circle cx="342" cy="210" r="6" fill="#0A0E17" />
+    <circle cx="342" cy="130" r="17" fill="#34D399" />
+    <circle cx="342" cy="130" r="7" fill="#0A0E17" />
+  </g>
+
+  <!-- Specular Border Stroke -->
+  <rect x="2" y="2" width="508" height="508" rx="110" ry="110" fill="none" stroke="url(#borderGrad)" stroke-width="3" />
+</svg>
