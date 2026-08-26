@@ -32,15 +32,44 @@ interface GitGraphViewProps {
   onCommitContextMenu: (e: MouseEvent, commit: CommitSummary) => void;
 }
 
+// Sophisticated, accessible palette with high contrast on both light and dark backgrounds
 const LANE_COLORS = [
-  "#38BDF8", // Sky Blue
-  "#34D399", // Emerald Mint
-  "#C084FC", // Purple
-  "#FBBF24", // Solar Amber
-  "#F43F5E", // Rose
-  "#A78BFA", // Indigo/Violet
-  "#2DD4BF", // Teal
+  "#2563EB", // Cobalt Blue
+  "#059669", // Emerald Mint
+  "#7C3AED", // Royal Purple
+  "#D97706", // Solar Amber
+  "#E11D48", // Crimson Rose
+  "#0891B2", // Cyan Teal
+  "#4F46E5", // Indigo
+  "#DB2777", // Fuchsia Pink
 ];
+
+const ROW_HEIGHT = 38;
+const NODE_CY = 19;
+const LANE_WIDTH = 20;
+const OFFSET_X = 16;
+
+interface RailPass {
+  lane: number;
+  color: string;
+}
+
+interface GraphCurve {
+  fromLane: number;
+  toLane: number;
+  color: string;
+  type: "top-to-node" | "node-to-bottom";
+}
+
+interface ProcessedGraphNode {
+  commit: CommitSummary;
+  lane: number;
+  color: string;
+  hasTopLine: boolean;
+  hasBottomLine: boolean;
+  passingRails: RailPass[];
+  curves: GraphCurve[];
+}
 
 export const GitGraphView: Component<GitGraphViewProps> = (props) => {
   const [copiedHash, setCopiedHash] = createSignal<string | null>(null);
@@ -66,11 +95,14 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
     });
   };
 
-  // Lane Allocation Computation
-  const graphNodes = createMemo(() => {
+  // Robust Multi-Lane Topological Graph Computation
+  const graphData = createMemo(() => {
     const list = props.commits;
     const activeLanes: (string | null)[] = [];
-    const nodes = list.map((commit, idx) => {
+    let maxLaneIndex = 0;
+
+    const nodes: ProcessedGraphNode[] = list.map((commit) => {
+      // 1. Allocate or retrieve lane for this commit
       let laneIndex = activeLanes.indexOf(commit.hash);
       if (laneIndex === -1) {
         laneIndex = activeLanes.indexOf(null);
@@ -82,84 +114,140 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
         }
       }
 
+      if (laneIndex > maxLaneIndex) {
+        maxLaneIndex = laneIndex;
+      }
+
       const color = LANE_COLORS[laneIndex % LANE_COLORS.length];
       const parents = commit.parents || [];
+      const curves: GraphCurve[] = [];
+      let hasBottomLine = false;
 
-      // Next lanes assignment for subsequent commits
+      // 2. Identify passing rails for other active branches in this row
+      const passingRails: RailPass[] = [];
+      for (let l = 0; l < activeLanes.length; l++) {
+        if (l !== laneIndex && activeLanes[l] !== null) {
+          passingRails.push({
+            lane: l,
+            color: LANE_COLORS[l % LANE_COLORS.length],
+          });
+        }
+      }
+
+      // 3. Connect parents for subsequent rows
       if (parents.length === 0) {
+        // Root commit (branch terminates)
         activeLanes[laneIndex] = null;
+        hasBottomLine = false;
+      } else if (parents.length === 1) {
+        const p0 = parents[0];
+        const existingLane = activeLanes.indexOf(p0);
+
+        if (existingLane === -1 || existingLane === laneIndex) {
+          // Parent continues in current lane
+          activeLanes[laneIndex] = p0;
+          hasBottomLine = true;
+        } else {
+          // Merge to existing parent lane
+          activeLanes[laneIndex] = null;
+          curves.push({
+            fromLane: laneIndex,
+            toLane: existingLane,
+            color: LANE_COLORS[existingLane % LANE_COLORS.length],
+            type: "node-to-bottom",
+          });
+        }
       } else {
-        activeLanes[laneIndex] = parents[0];
+        // Merge commit with multiple parents
+        const p0 = parents[0];
+        activeLanes[laneIndex] = p0;
+        hasBottomLine = true;
+
         for (let p = 1; p < parents.length; p++) {
           const parentHash = parents[p];
-          if (!activeLanes.includes(parentHash)) {
-            const freeSlot = activeLanes.indexOf(null);
-            if (freeSlot === -1) activeLanes.push(parentHash);
-            else activeLanes[freeSlot] = parentHash;
+          let pLane = activeLanes.indexOf(parentHash);
+          if (pLane === -1) {
+            pLane = activeLanes.indexOf(null);
+            if (pLane === -1) {
+              pLane = activeLanes.length;
+              activeLanes.push(parentHash);
+            } else {
+              activeLanes[pLane] = parentHash;
+            }
           }
+          if (pLane > maxLaneIndex) {
+            maxLaneIndex = pLane;
+          }
+          curves.push({
+            fromLane: laneIndex,
+            toLane: pLane,
+            color: LANE_COLORS[pLane % LANE_COLORS.length],
+            type: "node-to-bottom",
+          });
         }
       }
 
       return {
         commit,
-        laneIndex,
+        lane: laneIndex,
         color,
         hasTopLine: true,
-        hasBottomLine: idx < list.length - 1,
-        activeLanesCount: Math.max(
-          1,
-          activeLanes.filter((l) => l !== null).length,
-        ),
+        hasBottomLine,
+        passingRails,
+        curves,
       };
     });
 
-    return nodes;
+    const gutterWidth = Math.max(1, maxLaneIndex + 1) * LANE_WIDTH + OFFSET_X;
+    return { nodes, gutterWidth };
   });
+
+  const getLaneX = (lane: number) => lane * LANE_WIDTH + OFFSET_X;
 
   const getFileBadge = (filePath: string) => {
     const ext = filePath.split(".").pop()?.toLowerCase() || "";
     switch (ext) {
       case "go":
         return (
-          <span class="px-1 py-0.5 bg-cyan-500/20 text-cyan-400 font-mono text-[9.5px] font-black rounded border border-cyan-500/40">
+          <span class="px-1.5 py-0.5 bg-cyan-100 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 font-mono text-[10px] font-black rounded border border-cyan-300 dark:border-cyan-500/40">
             go
           </span>
         );
       case "ts":
         return (
-          <span class="px-1 py-0.5 bg-blue-500/20 text-blue-400 font-mono text-[9.5px] font-black rounded border border-blue-500/40">
+          <span class="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 font-mono text-[10px] font-black rounded border border-blue-300 dark:border-blue-500/40">
             TS
           </span>
         );
       case "tsx":
         return (
-          <span class="px-1 py-0.5 bg-sky-500/20 text-sky-400 font-mono text-[9.5px] font-black rounded border border-sky-500/40">
+          <span class="px-1.5 py-0.5 bg-sky-100 dark:bg-sky-500/20 text-sky-800 dark:text-sky-300 font-mono text-[10px] font-black rounded border border-sky-300 dark:border-sky-500/40">
             TSX
           </span>
         );
       case "js":
       case "jsx":
         return (
-          <span class="px-1 py-0.5 bg-amber-500/20 text-amber-400 font-mono text-[9.5px] font-black rounded border border-amber-500/40">
+          <span class="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 font-mono text-[10px] font-black rounded border border-amber-300 dark:border-amber-500/40">
             JS
           </span>
         );
       case "css":
       case "scss":
         return (
-          <span class="px-1 py-0.5 bg-pink-500/20 text-pink-400 font-mono text-[9.5px] font-black rounded border border-pink-500/40">
+          <span class="px-1.5 py-0.5 bg-pink-100 dark:bg-pink-500/20 text-pink-800 dark:text-pink-300 font-mono text-[10px] font-black rounded border border-pink-300 dark:border-pink-500/40">
             CSS
           </span>
         );
       case "json":
         return (
-          <span class="px-1 py-0.5 bg-yellow-500/20 text-yellow-400 font-mono text-[9.5px] font-black rounded border border-yellow-500/40">
+          <span class="px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 font-mono text-[10px] font-black rounded border border-yellow-300 dark:border-yellow-500/40">
             JSON
           </span>
         );
       case "md":
         return (
-          <span class="px-1 py-0.5 bg-indigo-500/20 text-indigo-400 font-mono text-[9.5px] font-black rounded border border-indigo-500/40">
+          <span class="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 font-mono text-[10px] font-black rounded border border-indigo-300 dark:border-indigo-500/40">
             MD
           </span>
         );
@@ -173,20 +261,34 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
       case "modified":
       case "staged":
         return (
-          <span class="font-mono text-xs font-bold text-amber-400">M</span>
+          <span class="font-mono text-xs font-bold text-amber-600 dark:text-amber-400">
+            M
+          </span>
         );
       case "added":
       case "untracked":
         return (
-          <span class="font-mono text-xs font-bold text-emerald-400">A</span>
+          <span class="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            A
+          </span>
         );
       case "deleted":
-        return <span class="font-mono text-xs font-bold text-rose-400">D</span>;
+        return (
+          <span class="font-mono text-xs font-bold text-rose-600 dark:text-rose-400">
+            D
+          </span>
+        );
       case "renamed":
-        return <span class="font-mono text-xs font-bold text-cyan-400">R</span>;
+        return (
+          <span class="font-mono text-xs font-bold text-cyan-600 dark:text-cyan-400">
+            R
+          </span>
+        );
       default:
         return (
-          <span class="font-mono text-xs font-bold text-amber-400">M</span>
+          <span class="font-mono text-xs font-bold text-amber-600 dark:text-amber-400">
+            M
+          </span>
         );
     }
   };
@@ -205,8 +307,8 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
             if (ref.startsWith("HEAD -> ")) {
               const branch = ref.replace("HEAD -> ", "");
               return (
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-sky-500/20 text-sky-300 border border-sky-500/50 rounded-full font-mono text-[10.5px] font-bold shadow-sm">
-                  <CircleDot class="w-3 h-3 text-sky-400" />
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-sky-50 dark:bg-sky-500/15 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-500/40 rounded-full font-mono text-[10px] font-bold shadow-xs">
+                  <CircleDot class="w-3 h-3 text-sky-600 dark:text-sky-400" />
                   <span>{branch}</span>
                 </span>
               );
@@ -214,23 +316,23 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
             if (ref.startsWith("tag: ")) {
               const tag = ref.replace("tag: ", "");
               return (
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/50 rounded-full font-mono text-[10.5px] font-bold shadow-sm">
-                  <Tag class="w-3 h-3 text-amber-400" />
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40 rounded-full font-mono text-[10px] font-bold shadow-xs">
+                  <Tag class="w-3 h-3 text-amber-600 dark:text-amber-400" />
                   <span>{tag}</span>
                 </span>
               );
             }
             if (ref.includes("origin/") || ref.includes("upstream/")) {
               return (
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/50 rounded-full font-mono text-[10.5px] font-bold shadow-sm">
-                  <Cloud class="w-3 h-3 text-purple-400" />
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 dark:bg-purple-500/15 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-500/40 rounded-full font-mono text-[10px] font-bold shadow-xs">
+                  <Cloud class="w-3 h-3 text-purple-600 dark:text-purple-400" />
                   <span>{ref}</span>
                 </span>
               );
             }
             return (
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/50 rounded-full font-mono text-[10.5px] font-bold shadow-sm">
-                <GitBranch class="w-3 h-3 text-indigo-400" />
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-50 dark:bg-indigo-500/15 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-500/40 rounded-full font-mono text-[10px] font-bold shadow-xs">
+                <GitBranch class="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                 <span>{ref}</span>
               </span>
             );
@@ -256,22 +358,26 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
         <div class="select-none">
           <div
             onClick={() => toggleFolder(node.id)}
-            class="flex items-center gap-1.5 px-3 py-1 hover:bg-[#1A1F2C] text-gray-300 hover:text-white cursor-pointer text-xs font-mono transition-colors"
+            class="flex items-center gap-1.5 px-3 py-1 hover:bg-gray-100 dark:hover:bg-[#1A1F2C] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs font-mono transition-colors"
             style={{ "padding-left": `${depth * 14 + 8}px` }}
           >
             <Show
               when={isExpanded()}
-              fallback={<ChevronRight class="w-3 h-3 text-gray-500" />}
+              fallback={
+                <ChevronRight class="w-3 h-3 text-gray-400 dark:text-gray-500" />
+              }
             >
-              <ChevronDown class="w-3 h-3 text-indigo-400" />
+              <ChevronDown class="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
             </Show>
             <Show
               when={isExpanded()}
-              fallback={<Folder class="w-3.5 h-3.5 text-amber-400/80" />}
+              fallback={<Folder class="w-3.5 h-3.5 text-amber-500/80" />}
             >
-              <FolderOpen class="w-3.5 h-3.5 text-amber-400" />
+              <FolderOpen class="w-3.5 h-3.5 text-amber-500" />
             </Show>
-            <span class="font-semibold text-gray-300">{node.name}</span>
+            <span class="font-semibold text-gray-800 dark:text-gray-200">
+              {node.name}
+            </span>
           </div>
 
           <Show when={isExpanded()}>
@@ -289,22 +395,26 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
         onClick={() =>
           repoStore.selectFileForDiff(file.path, false, commitHash)
         }
-        class="group flex items-center justify-between px-3 py-1 hover:bg-[#1A1F2C] text-gray-300 hover:text-white cursor-pointer text-xs font-mono transition-colors"
+        class="group flex items-center justify-between px-3 py-1 hover:bg-gray-100 dark:hover:bg-[#1A1F2C] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs font-mono transition-colors"
         style={{ "padding-left": `${depth * 14 + 20}px` }}
       >
         <div class="flex items-center gap-2 min-w-0">
           {getFileBadge(file.path)}
-          <span class="truncate text-gray-200 group-hover:text-indigo-300">
+          <span class="truncate text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-300">
             {node.name}
           </span>
         </div>
 
         <div class="flex items-center gap-3 text-[11px] tabular-nums flex-shrink-0 mr-1">
           <Show when={file.additions > 0}>
-            <span class="text-emerald-400 font-bold">+{file.additions}</span>
+            <span class="text-emerald-600 dark:text-emerald-400 font-bold">
+              +{file.additions}
+            </span>
           </Show>
           <Show when={file.deletions > 0}>
-            <span class="text-rose-400 font-bold">-{file.deletions}</span>
+            <span class="text-rose-600 dark:text-rose-400 font-bold">
+              -{file.deletions}
+            </span>
           </Show>
           {getStatusLetter(file.status)}
         </div>
@@ -327,22 +437,26 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
         <div class="select-none">
           <div
             onClick={() => toggleFolder(node.id)}
-            class="flex items-center gap-1.5 px-3 py-1 hover:bg-[#1A1F2C] text-gray-300 hover:text-white cursor-pointer text-xs font-mono transition-colors"
+            class="flex items-center gap-1.5 px-3 py-1 hover:bg-gray-100 dark:hover:bg-[#1A1F2C] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs font-mono transition-colors"
             style={{ "padding-left": `${depth * 14 + 8}px` }}
           >
             <Show
               when={isExpanded()}
-              fallback={<ChevronRight class="w-3 h-3 text-gray-500" />}
+              fallback={
+                <ChevronRight class="w-3 h-3 text-gray-400 dark:text-gray-500" />
+              }
             >
-              <ChevronDown class="w-3 h-3 text-sky-400" />
+              <ChevronDown class="w-3 h-3 text-sky-600 dark:text-sky-400" />
             </Show>
             <Show
               when={isExpanded()}
-              fallback={<Folder class="w-3.5 h-3.5 text-amber-400/80" />}
+              fallback={<Folder class="w-3.5 h-3.5 text-amber-500/80" />}
             >
-              <FolderOpen class="w-3.5 h-3.5 text-amber-400" />
+              <FolderOpen class="w-3.5 h-3.5 text-amber-500" />
             </Show>
-            <span class="font-semibold text-gray-300">{node.name}</span>
+            <span class="font-semibold text-gray-800 dark:text-gray-200">
+              {node.name}
+            </span>
           </div>
 
           <Show when={isExpanded()}>
@@ -358,12 +472,12 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
     return (
       <div
         onClick={() => repoStore.selectFileForDiff(file.path, file.staged)}
-        class="group flex items-center justify-between px-3 py-1 hover:bg-[#1A1F2C] text-gray-300 hover:text-white cursor-pointer text-xs font-mono transition-colors"
+        class="group flex items-center justify-between px-3 py-1 hover:bg-gray-100 dark:hover:bg-[#1A1F2C] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs font-mono transition-colors"
         style={{ "padding-left": `${depth * 14 + 20}px` }}
       >
         <div class="flex items-center gap-2 min-w-0">
           {getFileBadge(file.path)}
-          <span class="truncate text-gray-200 group-hover:text-sky-300">
+          <span class="truncate text-gray-800 dark:text-gray-200 group-hover:text-sky-600 dark:group-hover:text-sky-300">
             {node.name}
           </span>
         </div>
@@ -377,7 +491,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                   e.stopPropagation();
                   void repoStore.stageFiles(props.repo.path, [file.path]);
                 }}
-                class="p-0.5 opacity-0 group-hover:opacity-100 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-400 rounded transition-all"
+                class="p-0.5 opacity-0 group-hover:opacity-100 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-gray-500 hover:text-emerald-700 dark:hover:text-emerald-400 rounded transition-all cursor-pointer"
                 title="Stage file"
               >
                 <Plus class="w-3 h-3" />
@@ -389,7 +503,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                 e.stopPropagation();
                 void repoStore.unstageFiles(props.repo.path, [file.path]);
               }}
-              class="p-0.5 opacity-0 group-hover:opacity-100 hover:bg-amber-500/20 text-gray-400 hover:text-amber-400 rounded transition-all"
+              class="p-0.5 opacity-0 group-hover:opacity-100 hover:bg-amber-100 dark:hover:bg-amber-500/20 text-gray-500 hover:text-amber-700 dark:hover:text-amber-400 rounded transition-all cursor-pointer"
               title="Unstage file"
             >
               <Minus class="w-3 h-3" />
@@ -410,97 +524,106 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
   );
 
   return (
-    <div class="space-y-0.5 font-sans select-none">
-      {/* 1. Top Special Node: Outgoing Changes / Uncommitted Changes */}
+    <div class="font-sans select-none overflow-x-hidden">
+      {/* 1. Top Outgoing Changes / Uncommitted Changes Node */}
       <Show when={hasOutgoingOrUncommitted()}>
         <div
-          class={`group flex items-stretch border-b border-gray-800/60 transition-colors ${
-            isOutgoingExpanded() ? "bg-[#121624]/80" : "hover:bg-[#141824]/60"
+          class={`group flex items-stretch border-b border-gray-200/80 dark:border-gray-800/80 transition-colors ${
+            isOutgoingExpanded()
+              ? "bg-sky-50/70 dark:bg-[#121624]/90"
+              : "bg-sky-50/30 dark:bg-sky-950/10 hover:bg-sky-50/60 dark:hover:bg-sky-950/20"
           }`}
         >
-          {/* Continuous Left Graph Spine */}
-          <div class="w-8 flex-shrink-0 flex flex-col items-center relative">
-            {/* Dashed Node Circle */}
-            <div class="h-9 flex items-center justify-center relative">
-              <svg width="24" height="36" class="overflow-visible">
-                {/* Outgoing Dashed Ring Node */}
-                <circle
-                  cx="12"
-                  cy="18"
-                  r="6.5"
-                  fill="none"
-                  stroke="#38BDF8"
-                  stroke-width="2"
-                  stroke-dasharray="3,2.5"
-                />
-                <circle cx="12" cy="18" r="2.5" fill="#38BDF8" />
-                {/* Dashed Vertical Line Connecting to HEAD Commit */}
-                <line
-                  x1="12"
-                  y1="25"
-                  x2="12"
-                  y2="36"
-                  stroke="#38BDF8"
-                  stroke-width="2"
-                  stroke-dasharray="3,2.5"
-                />
-              </svg>
-            </div>
+          {/* Left Graph Spine column matching width */}
+          <div
+            class="flex-shrink-0 relative flex flex-col items-center select-none"
+            style={{ width: `${graphData().gutterWidth}px` }}
+          >
+            <svg
+              width={graphData().gutterWidth}
+              height={ROW_HEIGHT}
+              class="overflow-visible block"
+            >
+              {/* Outgoing Dashed Ring Node */}
+              <circle
+                cx={OFFSET_X}
+                cy={NODE_CY}
+                r="6.5"
+                fill="none"
+                stroke="#0284C7"
+                stroke-width="2"
+                stroke-dasharray="3,2.5"
+              />
+              <circle cx={OFFSET_X} cy={NODE_CY} r="2.5" fill="#0284C7" />
+              {/* Dashed Vertical Line Connecting to HEAD Commit */}
+              <line
+                x1={OFFSET_X}
+                y1={NODE_CY + 6}
+                x2={OFFSET_X}
+                y2={ROW_HEIGHT}
+                stroke="#0284C7"
+                stroke-width="2"
+                stroke-dasharray="3,2.5"
+              />
+            </svg>
 
             {/* Continuous Vertical Spine when Outgoing is Expanded */}
             <Show when={isOutgoingExpanded()}>
-              <div class="flex-1 w-0.5 border-l-2 border-dashed border-sky-400/80 my-1" />
+              <div
+                class="absolute top-[38px] bottom-0 w-0.5 border-l-2 border-dashed border-sky-500/80"
+                style={{ left: `${OFFSET_X - 1}px` }}
+              />
             </Show>
           </div>
 
           {/* Outgoing Changes Row Content */}
-          <div class="flex-1 min-w-0 py-2 pr-3">
+          <div class="flex-1 min-w-0 py-2.5 pr-4">
             <div
               onClick={() => setIsOutgoingExpanded(!isOutgoingExpanded())}
               class="flex items-center justify-between gap-3 cursor-pointer"
             >
-              <div class="flex items-center gap-2 truncate">
-                <span class="font-bold text-xs text-sky-300 font-mono tracking-tight">
+              <div class="flex items-center gap-2.5 truncate">
+                <span class="font-bold text-xs text-sky-800 dark:text-sky-300 font-mono tracking-tight">
                   Outgoing Changes
                 </span>
-                <span class="text-xs text-gray-400 font-mono">
+                <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">
                   {props.repo.currentBranch}
                 </span>
 
                 <Show when={props.repo.aheadCount > 0}>
-                  <span class="px-2 py-0.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-full font-mono text-[10px] font-bold">
+                  <span class="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 rounded-full font-mono text-[10px] font-bold">
                     +{props.repo.aheadCount} to push
                   </span>
                 </Show>
 
                 <Show when={props.repo.changedFilesCount > 0}>
-                  <span class="px-2 py-0.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded-full font-mono text-[10px] font-bold">
+                  <span class="px-2 py-0.5 bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 rounded-full font-mono text-[10px] font-bold">
                     {props.repo.changedFilesCount} uncommitted
                   </span>
                 </Show>
               </div>
 
-              <button class="p-1 rounded text-gray-400 hover:text-white transition-transform">
+              <button class="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-white transition-transform">
                 <Show
                   when={isOutgoingExpanded()}
                   fallback={<ChevronRight class="w-3.5 h-3.5" />}
                 >
-                  <ChevronDown class="w-3.5 h-3.5 text-sky-400" />
+                  <ChevronDown class="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
                 </Show>
               </button>
             </div>
 
             {/* Expanded Outgoing Changes Files Tree */}
             <Show when={isOutgoingExpanded()}>
-              <div class="mt-2.5 pt-2 border-t border-gray-800/80 space-y-2">
-                <div class="flex items-center justify-between text-xs text-gray-400 px-1 font-mono">
+              <div class="mt-2.5 pt-2 border-t border-sky-200 dark:border-gray-800/80 space-y-2">
+                <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 px-1 font-mono">
                   <span>
                     WORKING TREE FILES ({props.repo.files?.length || 0})
                   </span>
                   <div class="flex items-center gap-2">
                     <button
                       onClick={() => repoStore.stageFiles(props.repo.path, [])}
-                      class="px-2 py-0.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 rounded font-semibold text-[10px] cursor-pointer"
+                      class="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 border border-emerald-300 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300 rounded font-semibold text-[10px] cursor-pointer transition-colors"
                     >
                       Stage All
                     </button>
@@ -508,14 +631,14 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                       onClick={() =>
                         repoStore.unstageFiles(props.repo.path, [])
                       }
-                      class="px-2 py-0.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 rounded font-semibold text-[10px] cursor-pointer"
+                      class="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 border border-amber-300 dark:border-amber-500/30 text-amber-800 dark:text-amber-300 rounded font-semibold text-[10px] cursor-pointer transition-colors"
                     >
                       Unstage All
                     </button>
                   </div>
                 </div>
 
-                <div class="bg-carbon-base/60 border border-carbon-border/60 rounded-xl overflow-hidden py-1">
+                <div class="bg-white dark:bg-carbon-base/70 border border-gray-200 dark:border-carbon-border/60 rounded-xl overflow-hidden py-1 shadow-xs">
                   <For each={outgoingFilesTree()}>
                     {(node) => renderOutgoingTreeNode(node)}
                   </For>
@@ -527,94 +650,135 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
       </Show>
 
       {/* 2. Main Commits Graph Timeline */}
-      <For each={graphNodes()}>
+      <For each={graphData().nodes}>
         {(node, idx) => {
           const commit = node.commit;
           const isExpanded = () => expandedCommitHashes().has(commit.hash);
           const detail = () => repoStore.getCommitDetail(commit.hash);
-
-          const laneX = () => node.laneIndex * 16 + 12;
+          const nodeX = getLaneX(node.lane);
 
           return (
             <div
-              class={`group flex items-stretch border-b border-gray-800/40 transition-all ${
+              class={`group flex items-stretch border-b border-gray-100 dark:border-gray-800/50 transition-colors ${
                 isExpanded()
-                  ? "bg-[#121624] border-indigo-500/50 shadow-md"
-                  : "hover:bg-[#141824]/60"
+                  ? "bg-indigo-50/70 dark:bg-[#121624] border-indigo-200 dark:border-indigo-500/40"
+                  : "hover:bg-[#F4F1EA] dark:hover:bg-[#161B26]"
               }`}
             >
-              {/* Left Graph Spine Column */}
+              {/* Left Graph Spine Column with uniform width */}
               <div
-                class="flex-shrink-0 flex flex-col items-center relative"
-                style={{
-                  width: `${Math.max(2, node.laneIndex + 1) * 16 + 10}px`,
-                }}
+                class="flex-shrink-0 relative flex flex-col items-center select-none"
+                style={{ width: `${graphData().gutterWidth}px` }}
               >
-                {/* SVG Node and Branch Connectors */}
-                <div class="h-9 flex items-center justify-center relative w-full">
-                  <svg
-                    width={`${Math.max(2, node.laneIndex + 1) * 16 + 10}`}
-                    height="36"
-                    class="overflow-visible"
-                  >
-                    {/* Top connecting vertical line */}
-                    <Show when={node.hasTopLine || idx() > 0}>
+                {/* SVG for node, connectors, and passing rails */}
+                <svg
+                  width={graphData().gutterWidth}
+                  height={ROW_HEIGHT}
+                  class="overflow-visible block"
+                >
+                  {/* Passing Rails for other parallel branches */}
+                  <For each={node.passingRails}>
+                    {(rail) => (
                       <line
-                        x1={laneX()}
+                        x1={getLaneX(rail.lane)}
                         y1="0"
-                        x2={laneX()}
-                        y2="18"
-                        stroke={node.color}
-                        stroke-width="2"
+                        x2={getLaneX(rail.lane)}
+                        y2={ROW_HEIGHT}
+                        stroke={rail.color}
+                        stroke-width="2.5"
+                        stroke-linecap="round"
                       />
-                    </Show>
+                    )}
+                  </For>
 
-                    {/* Bottom connecting vertical line */}
-                    <Show when={node.hasBottomLine}>
-                      <line
-                        x1={laneX()}
-                        y1="18"
-                        x2={laneX()}
-                        y2="36"
-                        stroke={node.color}
-                        stroke-width="2"
-                      />
-                    </Show>
-
-                    {/* Branch Node Ring / Dot */}
-                    <circle
-                      cx={laneX()}
-                      cy="18"
-                      r="5.5"
-                      fill={isExpanded() ? node.color : "#0B0E14"}
+                  {/* Top vertical connector from previous commit */}
+                  <Show
+                    when={
+                      node.hasTopLine &&
+                      (idx() > 0 || hasOutgoingOrUncommitted())
+                    }
+                  >
+                    <line
+                      x1={nodeX}
+                      y1="0"
+                      x2={nodeX}
+                      y2={NODE_CY}
                       stroke={node.color}
                       stroke-width="2.5"
-                      class="transition-transform group-hover:scale-110"
+                      stroke-dasharray={
+                        idx() === 0 && hasOutgoingOrUncommitted()
+                          ? "3,2.5"
+                          : undefined
+                      }
+                      stroke-linecap="round"
                     />
-                    <circle
-                      cx={laneX()}
-                      cy="18"
-                      r="2"
-                      fill={isExpanded() ? "#ffffff" : node.color}
+                  </Show>
+
+                  {/* Bottom vertical connector to next commit */}
+                  <Show when={node.hasBottomLine}>
+                    <line
+                      x1={nodeX}
+                      y1={NODE_CY}
+                      x2={nodeX}
+                      y2={ROW_HEIGHT}
+                      stroke={node.color}
+                      stroke-width="2.5"
+                      stroke-linecap="round"
                     />
-                  </svg>
-                </div>
+                  </Show>
+
+                  {/* Bezier Merge Curves */}
+                  <For each={node.curves}>
+                    {(curve) => {
+                      const x1 = getLaneX(curve.fromLane);
+                      const x2 = getLaneX(curve.toLane);
+                      const y1 = NODE_CY;
+                      const y2 = ROW_HEIGHT;
+                      const midY = (y1 + y2) / 2;
+                      const pathData = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+
+                      return (
+                        <path
+                          d={pathData}
+                          fill="none"
+                          stroke={curve.color}
+                          stroke-width="2.5"
+                          stroke-linecap="round"
+                        />
+                      );
+                    }}
+                  </For>
+
+                  {/* Commit Node Circle */}
+                  <circle
+                    cx={nodeX}
+                    cy={NODE_CY}
+                    r="5.5"
+                    fill={isExpanded() ? node.color : "#ffffff"}
+                    class="dark:fill-[#0D1017] transition-all"
+                    stroke={node.color}
+                    stroke-width="2.5"
+                  />
+                  <Show when={isExpanded()}>
+                    <circle cx={nodeX} cy={NODE_CY} r="2" fill="#ffffff" />
+                  </Show>
+                </svg>
 
                 {/* Continuous Graph Vertical Spine for Expanded Commit */}
                 <Show when={isExpanded()}>
                   <div
-                    class="flex-1 w-0.5 my-1"
+                    class="absolute top-[38px] bottom-0 w-0.5"
                     style={{
+                      left: `${nodeX - 1}px`,
                       "background-color": node.color,
-                      "margin-left": `${node.laneIndex * 16 + 2}px`,
                     }}
                   />
                 </Show>
               </div>
 
               {/* Commit Content Body */}
-              <div class="flex-1 min-w-0 py-2 pr-3">
-                {/* Top Commit Row Header */}
+              <div class="flex-1 min-w-0 py-2.5 pr-4 flex flex-col justify-center">
+                {/* Commit Row Header */}
                 <div
                   onClick={() => repoStore.toggleCommitExpanded(commit.hash)}
                   onContextMenu={(e) => props.onCommitContextMenu(e, commit)}
@@ -623,12 +787,12 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                   {/* Subject, Author & Ref Pills */}
                   <div class="flex items-center gap-2.5 min-w-0 flex-1 flex-wrap">
                     {/* Commit Subject */}
-                    <span class="font-semibold text-xs text-gray-200 group-hover:text-white truncate">
+                    <span class="font-medium text-xs text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 truncate">
                       {commit.subject}
                     </span>
 
                     {/* Commit Author */}
-                    <span class="text-xs text-gray-500 font-mono">
+                    <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">
                       {commit.authorName}
                     </span>
 
@@ -637,7 +801,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                   </div>
 
                   {/* Right Action Icons & Date */}
-                  <div class="flex items-center gap-3 text-xs text-gray-500 font-mono flex-shrink-0">
+                  <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 font-mono flex-shrink-0">
                     <span class="hidden md:inline">{commit.relativeDate}</span>
 
                     {/* Quick Diff Action Icon */}
@@ -650,15 +814,17 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                           commit.hash,
                         );
                       }}
-                      class="p-1 hover:bg-carbon-hover text-gray-400 hover:text-indigo-300 rounded opacity-0 group-hover:opacity-100 transition-all"
+                      class="p-1 hover:bg-gray-200 dark:hover:bg-carbon-hover text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-300 rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                       title="Inspect commit diff"
                     >
                       <FileDiff class="w-3.5 h-3.5" />
                     </button>
 
                     <button
-                      class={`p-0.5 text-gray-400 hover:text-white transition-transform ${
-                        isExpanded() ? "rotate-90 text-indigo-400" : ""
+                      class={`p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-white transition-transform ${
+                        isExpanded()
+                          ? "rotate-90 text-indigo-600 dark:text-indigo-400"
+                          : ""
                       }`}
                     >
                       <ChevronRight class="w-3.5 h-3.5" />
@@ -668,12 +834,12 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
 
                 {/* Expanded Commit Details & Modified Files Tree */}
                 <Show when={isExpanded()}>
-                  <div class="mt-2.5 pt-2 border-t border-gray-800/80 space-y-3">
+                  <div class="mt-2.5 pt-2.5 border-t border-gray-200 dark:border-gray-800/80 space-y-3">
                     <Show
                       when={detail()}
                       fallback={
                         <div class="py-3 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
-                          <RefreshCw class="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                          <RefreshCw class="w-3.5 h-3.5 animate-spin text-indigo-500" />
                           <span>Loading commit details...</span>
                         </div>
                       }
@@ -686,8 +852,8 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                         return (
                           <div class="space-y-3">
                             {/* Metadata / Actions Bar */}
-                            <div class="bg-carbon-base/70 p-3 rounded-xl border border-carbon-border/60 text-xs font-mono space-y-2">
-                              <div class="flex items-center justify-between text-gray-400 text-[11px] gap-2 flex-wrap">
+                            <div class="bg-white dark:bg-carbon-base/70 p-3.5 rounded-xl border border-gray-200 dark:border-carbon-border/60 text-xs font-mono space-y-2.5 shadow-xs">
+                              <div class="flex items-center justify-between text-gray-500 dark:text-gray-400 text-[11px] gap-2 flex-wrap">
                                 <span class="truncate">SHA: {d().hash}</span>
 
                                 <div class="flex items-center gap-2">
@@ -699,10 +865,10 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                                         d().hash,
                                       )
                                     }
-                                    class="px-2.5 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-indigo-300 font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                                    class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/20 dark:hover:bg-indigo-500/30 border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
                                     title="View entire commit diff"
                                   >
-                                    <FileDiff class="w-3.5 h-3.5 text-indigo-400" />
+                                    <FileDiff class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                                     <span>View Entire Diff</span>
                                   </button>
 
@@ -710,13 +876,13 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                                     onClick={() =>
                                       copyText(d().hash, `sha-${d().hash}`)
                                     }
-                                    class="px-2 py-1 bg-carbon-surface hover:bg-carbon-hover border border-carbon-border text-gray-300 hover:text-white rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
+                                    class="px-2 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-carbon-surface dark:hover:bg-carbon-hover border border-gray-200 dark:border-carbon-border text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
                                   >
                                     <Show
                                       when={copiedHash() === `sha-${d().hash}`}
                                       fallback={<Copy class="w-3 h-3" />}
                                     >
-                                      <Check class="w-3 h-3 text-emerald-400" />
+                                      <Check class="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                     </Show>
                                     <span>
                                       {copiedHash() === `sha-${d().hash}`
@@ -728,27 +894,27 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                               </div>
 
                               <Show when={d().body}>
-                                <pre class="text-gray-300 whitespace-pre-wrap text-[11px] border-t border-carbon-border/40 pt-2 font-mono">
+                                <pre class="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-carbon-base/60 p-2.5 rounded-lg whitespace-pre-wrap text-[11px] border border-gray-200/80 dark:border-carbon-border/40 font-mono">
                                   {d().body}
                                 </pre>
                               </Show>
 
                               <div class="flex items-center gap-3 text-[11px] font-mono font-bold pt-0.5">
-                                <span class="text-gray-400">
+                                <span class="text-gray-500 dark:text-gray-400">
                                   {d().files.length} files
                                 </span>
-                                <span class="text-emerald-400">
+                                <span class="text-emerald-600 dark:text-emerald-400">
                                   +{d().totalAdditions}
                                 </span>
-                                <span class="text-rose-400">
+                                <span class="text-rose-600 dark:text-rose-400">
                                   -{d().totalDeletions}
                                 </span>
                               </div>
                             </div>
 
                             {/* Files Tree Section */}
-                            <div class="space-y-1">
-                              <div class="flex items-center justify-between text-[11px] text-gray-400 font-bold uppercase tracking-wider px-1">
+                            <div class="space-y-1.5">
+                              <div class="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider px-1">
                                 <span>FILES CHANGED ({d().files.length})</span>
                                 {(() => {
                                   const tree = createMemo(() =>
@@ -788,7 +954,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                                           );
                                         }
                                       }}
-                                      class="px-2.5 py-1 bg-[#151926] hover:bg-[#1E2436] border border-gray-700/60 rounded-lg text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 cursor-pointer transition-colors"
+                                      class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-[#151926] dark:hover:bg-[#1E2436] border border-gray-200 dark:border-gray-700/60 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white flex items-center gap-1.5 cursor-pointer transition-colors"
                                       title={
                                         isAllExp()
                                           ? "Collapse all folders"
@@ -798,10 +964,10 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                                       <Show
                                         when={isAllExp()}
                                         fallback={
-                                          <ChevronsUpDown class="w-3.5 h-3.5 text-indigo-400" />
+                                          <ChevronsUpDown class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                                         }
                                       >
-                                        <ChevronsUpDown class="w-3.5 h-3.5 text-amber-400 rotate-90" />
+                                        <ChevronsUpDown class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 rotate-90" />
                                       </Show>
                                       <span>
                                         {isAllExp()
@@ -813,7 +979,7 @@ export const GitGraphView: Component<GitGraphViewProps> = (props) => {
                                 })()}
                               </div>
 
-                              <div class="bg-carbon-base/70 border border-carbon-border/60 rounded-xl overflow-hidden py-1">
+                              <div class="bg-white dark:bg-carbon-base/70 border border-gray-200 dark:border-carbon-border/60 rounded-xl overflow-hidden py-1 shadow-xs">
                                 <For each={commitFilesTree()}>
                                   {(fileNode) =>
                                     renderCommitTreeNode(fileNode, d().hash)

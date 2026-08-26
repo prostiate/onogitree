@@ -1304,7 +1304,7 @@ export const RepoDashboard: Component<RepoDashboardProps> = (props) => {
               </div>
             }
           >
-            <div class="border border-gray-800/80 rounded-xl overflow-hidden bg-[#0D1017]">
+            <div class="border border-gray-200 dark:border-gray-800/80 rounded-2xl overflow-hidden bg-white dark:bg-[#0D1017] shadow-xs">
               <GitGraphView
                 repo={props.repo}
                 commits={filteredCommits()}
