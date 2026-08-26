@@ -19,6 +19,9 @@ import { SettingsModal } from './components/modals/SettingsModal';
 import { repoStore } from './store/repoStore';
 import { RepoStatus } from './types/git';
 
+const DEFAULT_SIDEBAR_WIDTH = 380;
+const DEFAULT_CHANGES_VIEW_HEIGHT = 260;
+
 export const App: Component = () => {
   const [isLoadingApp, setIsLoadingApp] = createSignal<boolean>(true);
   const [loadingStatus, setLoadingStatus] = createSignal<string>('Initializing Polyrepo Engine...');
@@ -27,10 +30,11 @@ export const App: Component = () => {
   const [branchPickerRepo, setBranchPickerRepo] = createSignal<RepoStatus | null>(null);
   
   // Resizers
-  const [sidebarWidth, setSidebarWidth] = createSignal<number>(380);
-  const [changesViewHeight, setChangesViewHeight] = createSignal<number>(260);
+  const [sidebarWidth, setSidebarWidth] = createSignal<number>(DEFAULT_SIDEBAR_WIDTH);
+  const [changesViewHeight, setChangesViewHeight] = createSignal<number>(DEFAULT_CHANGES_VIEW_HEIGHT);
   const [isDraggingSidebar, setIsDraggingSidebar] = createSignal<boolean>(false);
   const [isDraggingVertical, setIsDraggingVertical] = createSignal<boolean>(false);
+
 
   onMount(async () => {
     try {
@@ -108,8 +112,9 @@ export const App: Component = () => {
           {/* Vertical Resizer Divider */}
           <div
             onMouseDown={() => setIsDraggingVertical(true)}
+            onDblClick={() => setChangesViewHeight(DEFAULT_CHANGES_VIEW_HEIGHT)}
             class="h-1 hover:h-1.5 bg-carbon-border hover:bg-git-indigo cursor-row-resize transition-all z-10 flex-shrink-0 flex items-center justify-center group"
-            title="Drag to resize Source Control view"
+            title="Drag to resize Source Control view (Double-click to reset)"
           >
             <div class="w-8 h-0.5 bg-gray-600 group-hover:bg-git-indigo rounded-full opacity-60" />
           </div>
@@ -126,9 +131,11 @@ export const App: Component = () => {
         {/* Horizontal Resizer Divider */}
         <div
           onMouseDown={() => setIsDraggingSidebar(true)}
+          onDblClick={() => setSidebarWidth(DEFAULT_SIDEBAR_WIDTH)}
           class="w-1 hover:w-1.5 bg-carbon-border hover:bg-git-indigo cursor-col-resize transition-all z-10 flex-shrink-0"
-          title="Drag to resize sidebar width"
+          title="Drag to resize sidebar width (Double-click to reset)"
         />
+
 
         {/* Right Workspace Main Panel */}
         <main class="flex-1 bg-carbon-base flex flex-col overflow-hidden">
